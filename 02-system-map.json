@@ -1,0 +1,377 @@
+{
+  "request_summary": "Hero Academy MVP: a superhero-themed 11+ learning platform for 8-10 year olds. Three portals (child, parent, admin), assessment engine, gamification, deferred payments. React + TypeScript + Vite SPA frontend, Node/Express REST API, SQLite, JWT auth.",
+  "decomposition_level": "system_map",
+  "items": [
+    {
+      "id": "BC-01",
+      "title": "Auth & Identity",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "All three portals can authenticate their respective user roles securely; JWTs are issued and validated consistently; sessions expire and refresh correctly.",
+      "scope": [
+        "Parent registration, email verification, login, password reset",
+        "Child PIN login with avatar selection; short-lived in-memory JWT",
+        "Admin login (email/password)",
+        "JWT issuance: access token (15 min) + refresh token (HttpOnly cookie, 7 days, rotated on use)",
+        "Role claims: parent | child | admin",
+        "Route-level middleware enforcing role guards",
+        "Refresh token revocation list in DB for logout/suspend flows",
+        "PIN rate-limiting (5 attempts per child per 10 min)"
+      ],
+      "non_goals": [
+        "Server-side session storage",
+        "OAuth / social login",
+        "Child progress or subscription state",
+        "Admin account creation flow (see BC-06 or discovery)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "labels": ["auth", "security", "backend", "epic"],
+      "assumptions": [
+        "Admin accounts are seeded via seed script; no invite flow in MVP (OQ-8 unresolved — discovery issue created as BC-06-DQ)",
+        "Email verification for parents is non-blocking vs blocking is unresolved (OQ-3) — discovery issue created",
+        "Child JWT carries parent_id claim to enable subscription gating without extra DB lookup"
+      ],
+      "split_rationale": "Auth is a cross-portal service but is owned by a single backend module; keeping it as one bounded context avoids fragmentation across the three portals.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Three auth flows, but all share the same JWT infrastructure and middleware pattern"]
+      }
+    },
+    {
+      "id": "BC-02",
+      "title": "Child Portal — Learning & Gameplay",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "A child can log in with their PIN, navigate the city map, select a district, run a mission, and see their hero profile with updated XP and rank.",
+      "scope": [
+        "PIN + avatar selection login flow (child-facing)",
+        "City map UI: zone/district unlock state, navigation",
+        "District view and mission selection",
+        "Mission runner: question render, answer capture, attempt submission, feedback animation",
+        "Hero profile: avatar, XP bar, rank, stats, achievements display",
+        "2-hour inactivity auto-logout (client-side idle timer)",
+        "In-memory JWT storage (no localStorage)",
+        "Mobile-first responsive layout (375px+), touch targets ≥ 44px",
+        "Framer Motion animations: city fly-in, district zoom, power-up flash"
+      ],
+      "non_goals": [
+        "Assessment scoring logic (owned by Assessment Engine BC-04)",
+        "XP/rank computation (owned by Gamification BC-05)",
+        "Parent or admin UI",
+        "Offline / PWA capability (deferred per OQ-4)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-01", "BC-04", "BC-05"],
+      "labels": ["child-portal", "frontend", "epic", "mobile-first"],
+      "assumptions": [
+        "Single Vite SPA code-split by portal (AD-7)",
+        "Avatar config JSON schema must be agreed before component build (OQ-5 — discovery issue created)",
+        "City map unlock state is read from API; no offline caching in MVP"
+      ],
+      "split_rationale": "Child portal is a distinct UX surface with its own auth model, animation layer, and gameplay interactions; separating it from parent and admin portals keeps ownership clean.",
+      "size_assessment": {
+        "tshirt": "XL",
+        "is_too_large": true,
+        "reasons": [
+          "Spans city map, mission runner, hero profile, and auth flow — each is a meaningful delivery slice",
+          "Animation layer adds implementation complexity",
+          "Will require multiple PRs and likely multiple owners"
+        ]
+      }
+    },
+    {
+      "id": "BC-03",
+      "title": "Parent Portal",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "A parent can register, verify their email, manage their children's profiles, and view each child's progress dashboard.",
+      "scope": [
+        "Parent registration and email verification flow",
+        "Parent login, logout, password reset",
+        "Child management: add, view, edit, remove child profiles",
+        "Child progress dashboard: missions completed, scores, XP, rank, streak, strongest/weakest district",
+        "Subscription status display (plan badge — free for MVP)",
+        "Mobile-readable functional dashboard UI"
+      ],
+      "non_goals": [
+        "Billing or Stripe integration (deferred BC-07)",
+        "Child portal gameplay",
+        "Admin functions",
+        "Parent approval of child activity (OQ-9 — out of MVP scope)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-01", "BC-05"],
+      "labels": ["parent-portal", "frontend", "backend", "epic"],
+      "assumptions": [
+        "Parent portal is read-only for child progress data; no activity approval workflow in MVP (OQ-9)",
+        "Email verification blocking behaviour to be resolved via discovery (OQ-3)",
+        "Subscription UI shows plan status read from local DB; no Stripe calls in MVP"
+      ],
+      "split_rationale": "Parent portal is a distinct bounded context owning account management and child management; it consumes progress data but does not own it.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Functional dashboard UI; no heavy animation; auth flows shared with BC-01"]
+      }
+    },
+    {
+      "id": "BC-04",
+      "title": "Assessment Engine",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "The system can serve ordered question sets to a child, accept and score attempt submissions, compute stars and XP earned, and enforce subscription gating.",
+      "scope": [
+        "Question bank: CRUD (admin-facing), read (child-facing)",
+        "Assessment definitions: CRUD (admin-facing), fetch by topic (child-facing)",
+        "Attempt submission: POST attempt → score answers → compute stars (1/2/3) and XP earned → persist attempt",
+        "Attempt deduplication via client-generated UUID (unique constraint)",
+        "Subscription gating: read plan field from subscriptions table; stub to free for MVP",
+        "Question ordering: fixed vs randomised per attempt (OQ-6 — must be resolved before build)"
+      ],
+      "non_goals": [
+        "Gamification side-effects (owned by Gamification BC-05)",
+        "Admin UI for question/assessment management (owned by Admin Portal BC-06)",
+        "Stripe or billing (owned by Payments BC-07)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-01"],
+      "labels": ["assessment-engine", "backend", "epic"],
+      "assumptions": [
+        "Question ordering (random vs fixed) must be decided before implementation — OQ-6 is a blocker",
+        "Subscription gating logic is implemented against plan field even in MVP to reduce post-MVP migration cost (OQ-7 recommendation accepted)",
+        "15 questions per assessment at 11+ standard; seed data provides 150 questions across 5 topics"
+      ],
+      "split_rationale": "Assessment Engine owns the question bank, attempt lifecycle, and scoring. Separating it from gamification keeps the scoring contract clean and independently testable.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Backend-only bounded context; CRUD + scoring logic is well-scoped"]
+      }
+    },
+    {
+      "id": "BC-05",
+      "title": "Gamification",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "After each completed attempt, XP is accumulated, rank tier transitions are evaluated, streaks are tracked, and achievements are awarded; child stats are exposed to both the child and parent portals.",
+      "scope": [
+        "XP delta computation and persistence after attempt submission",
+        "Rank tier evaluation and transition on XP milestone",
+        "Streak tracking (consecutive daily missions)",
+        "Achievement badge evaluation and award",
+        "Child stats API: total missions, average score, streak, strongest/weakest district",
+        "In-process service triggered as post-attempt side-effect within attempt submission handler"
+      ],
+      "non_goals": [
+        "Gamification UI (owned by Child Portal BC-02 and Parent Portal BC-03)",
+        "Attempt scoring (owned by Assessment Engine BC-04)",
+        "Leaderboards or social features (not in MVP)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-04"],
+      "labels": ["gamification", "backend", "epic"],
+      "assumptions": [
+        "Gamification runs as an in-process service, not a separate module or process (AD-5)",
+        "Rank tier definitions (XP thresholds) must be specified before implementation",
+        "Achievement definitions (triggers and badge metadata) must be specified before implementation"
+      ],
+      "split_rationale": "Gamification is a distinct domain with its own rules (XP, rank, streak, achievements) that is consumed by multiple portals. Keeping it separate from the Assessment Engine preserves a clean scoring/gamification boundary.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Backend service layer only; no UI ownership; well-bounded side-effect chain"]
+      }
+    },
+    {
+      "id": "BC-06",
+      "title": "Admin Portal",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "An admin can manage questions and assessments, view and soft-delete user accounts, and access the system with appropriate access controls.",
+      "scope": [
+        "Admin login (email/password)",
+        "Question management: create, read, update, soft-delete",
+        "Assessment management: create, read, update, soft-delete; assign questions",
+        "User management: list parents and children, soft-delete accounts",
+        "Payment overview display (read-only plan status; no Stripe in MVP)",
+        "Desktop-oriented data-dense table/form UI (768px minimum)",
+        "Admin role guard middleware on all admin routes"
+      ],
+      "non_goals": [
+        "Child or parent portal UI",
+        "Stripe billing management (deferred BC-07)",
+        "Content delivery to children (owned by Assessment Engine BC-04)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-01", "BC-04"],
+      "labels": ["admin-portal", "frontend", "backend", "epic"],
+      "assumptions": [
+        "Admin accounts are created via seed script only for MVP — no invite or self-registration flow (OQ-8 unresolved; discovery item raised)",
+        "Soft-delete is the deletion strategy for all user and content records",
+        "Admin portal is desktop-oriented; mobile-first not required"
+      ],
+      "split_rationale": "Admin portal is a distinct bounded context with its own UX pattern and access model; separating it from the Assessment Engine avoids coupling content management to content delivery.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["CRUD-heavy but well-patterned; desktop-only UI reduces responsive complexity"]
+      }
+    },
+    {
+      "id": "BC-07",
+      "title": "Payments (Deferred Seam)",
+      "classification": "bounded_context",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "The architecture seam for Stripe integration exists and is stubbed; the subscriptions table and gating logic are in place so billing can be activated post-MVP without a structural retrofit.",
+      "scope": [
+        "Subscriptions table seeded with free plan for all parents",
+        "Stripe webhook endpoint stubbed: POST /api/v1/webhooks/stripe returns 200 and logs event",
+        "Plan field read by Assessment Engine gating logic (stubbed to free)",
+        "No Stripe SDK calls in MVP"
+      ],
+      "non_goals": [
+        "Stripe Checkout session creation",
+        "Webhook event processing (checkout.session.completed, subscription.updated, invoice.payment_failed)",
+        "Subscription upgrade/downgrade UI",
+        "Any real payment flow"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-04"],
+      "labels": ["payments", "deferred", "backend", "epic"],
+      "assumptions": [
+        "Stripe is the chosen payment provider post-MVP",
+        "All MVP users are on the free plan; no gating enforcement required beyond reading the plan field",
+        "Webhook signature verification is not implemented in MVP stub"
+      ],
+      "split_rationale": "Payments is architecturally isolated by design. Treating it as a stub bounded context now prevents it from bleeding into the Assessment Engine or Parent Portal.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["MVP scope is stub-only; full Stripe integration is post-MVP"]
+      }
+    },
+    {
+      "id": "CC-01",
+      "title": "Infrastructure, Deployment & Data Persistence",
+      "classification": "cross_cutting",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "The application can be deployed to a single server, the database schema is versioned and migrations run on startup, seed data is idempotent, and nightly backups protect the SQLite file.",
+      "scope": [
+        "Project structure: monorepo layout for /client and /server",
+        "Express serves /client/dist as static assets; SPA fallback for non-/api/* routes",
+        "Vite dev server proxying /api/* to Express in development",
+        "SQLite schema migration runner (versioned migration files applied at startup)",
+        "WAL mode enabled on SQLite",
+        "Idempotent DB seed script: 1 subject, 5 topics, 15 assessments, 150 questions at 11+ standard",
+        "Process supervision (PM2 or systemd)",
+        "Nightly SQLite backup to object storage",
+        "Environment configuration (dotenv or equivalent)"
+      ],
+      "non_goals": [
+        "CDN, load balancer, or multi-server deployment",
+        "CI/CD pipeline beyond basic build verification",
+        "Container orchestration"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "labels": ["infrastructure", "deployment", "cross-cutting", "epic"],
+      "assumptions": [
+        "Deployment target is unresolved (OQ-2 — discovery issue raised); VPS/Render/Railway are plausible targets",
+        "Single Node.js process for API + static serving (AD-1)",
+        "SQLite with better-sqlite3 (AD-2); DB file on persistent volume"
+      ],
+      "split_rationale": "Infrastructure concerns cross all bounded contexts and must be established before any portal or engine can be built end-to-end.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Well-understood setup tasks; no novel infrastructure work required for MVP"]
+      }
+    },
+    {
+      "id": "CC-02",
+      "title": "Data Privacy & Compliance",
+      "classification": "cross_cutting",
+      "issue_type": "epic",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "Child PII is minimised and protected; parent PII is not exposed in child API responses; GDPR/UK data protection obligations are tracked and a privacy policy is in place before public launch.",
+      "scope": [
+        "Child records store hero name + PIN hash only — no email, no surname",
+        "Parent email must not appear in child-facing API responses",
+        "bcrypt hashing for parent/admin passwords and child PINs",
+        "GDPR note: data retention policy and privacy policy page required before public launch (not MVP launch blocker, but must be tracked)",
+        "Data controller identification (OQ-10)"
+      ],
+      "non_goals": [
+        "Cookie consent banner implementation (tracked but deferred)",
+        "Right-to-erasure automated workflow (manual acceptable for MVP)",
+        "COPPA compliance (UK deployment; GDPR applies)"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": ["BC-01"],
+      "labels": ["privacy", "compliance", "cross-cutting", "epic"],
+      "assumptions": [
+        "Deployment jurisdiction is UK/EU; GDPR applies",
+        "Privacy policy is a pre-launch legal requirement but not a blocker for MVP build",
+        "Data controller is the product owner — must be confirmed (OQ-10)"
+      ],
+      "split_rationale": "Privacy obligations cross all bounded contexts (auth, child portal, parent portal, assessment data). Owning it as a cross-cutting concern ensures it is not dropped between domain epics.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["MVP scope is constraint enforcement and tracking; full compliance work is post-launch"]
+      }
+    },
+    {
+      "id": "DQ-01",
+      "title": "Resolve blocking open questions before detailed design",
+      "classification": "discovery_needed",
+      "issue_type": "discovery",
+      "level": "parent",
+      "parent_id": null,
+      "outcome": "All blocking open questions are answered so that child portal, assessment engine, auth, and admin portal detailed design can proceed without guessing.",
+      "scope": [
+        "OQ-1: Single Vite SPA vs three separate builds (AD-7 decision made — confirm and close)",
+        "OQ-2: Deployment target (VPS / Railway / Render / Fly.io) — affects infra setup",
+        "OQ-3: Email verification blocking vs non-blocking for MVP — affects auth flow",
+        "OQ-5: Avatar config JSON schema — must be agreed before frontend avatar components and DB layer are built",
+        "OQ-6: Question ordering per attempt (fixed vs randomised) — affects attempt scoring logic",
+        "OQ-8: Admin account creation — seed script only or invite flow?"
+      ],
+      "non_goals": [
+        "Non-blocking questions (OQ-4, OQ-7, OQ-9, OQ-10) — tracked but not blockers"
+      ],
+      "acceptance_criteria": [],
+      "dependencies": [],
+      "labels": ["discovery", "blocking", "epic"],
+      "assumptions": [
+        "OQ-1 is likely closed by AD-7 (single SPA) but should be formally confirmed",
+        "OQ-5 (avatar config schema) is a hard blocker for BC-02 detailed design"
+      ],
+      "split_rationale": "Grouping unresolved blocking questions into a discovery parent prevents downstream epics from being built on guesses. Each question may spawn a short spike or product decision.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": ["Discovery work; not implementation; should be resolved quickly before detailed design proceeds"]
+      }
+    }
+  ]
+}

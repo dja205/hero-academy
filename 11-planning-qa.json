@@ -1,0 +1,115 @@
+{
+  "project": "hero-academy",
+  "run": "2026-03-26-gh1-mvp-build-hero-academy-11-learning-platform",
+  "reviewed_at": "2026-03-26T23:39:26.444Z",
+  "verdict": "approved_with_conditions",
+  "confidence": 80,
+  "summary": "The Hero Academy MVP backlog is well-scoped, correctly sized, and covers all core MVP features across 10 delivery batches and 68 issues. Five fixable defects were found: an inverted dependency on the bcrypt issue, empty batch-level depends_on declarations, a missing frontend-to-API dependency on the city map, test issues with no sequencing anchors, and two untracked critical risks (GDPR and deployment target). None are build-stopping today, but ISS-056 must be resequenced and batch dependencies declared before Batch 3 begins.",
+  "gates": [
+    {
+      "gate": "Completeness",
+      "status": "pass",
+      "finding": "All MVP features from the request are represented: city map, child login and assessment flow, hero profile, parent portal (auth, dashboard, child management, subscription display), admin portal (questions, assessments, user management), gamification (XP, rank, streak, achievements), and seed content. Stripe billing is correctly deferred.",
+      "recommendation": "No action required. Scope is well-bounded."
+    },
+    {
+      "gate": "Consistency",
+      "status": "warn",
+      "finding": "RISK-12 flags a contradiction between the architecture doc (district unlock equals prior district completion) and capability slices (district unlock equals XP threshold). ISS-061 partially addresses this but OQ-07 is only listed in ISS-060 as OQ-6 decided without a clear output artefact. ISS-030 and ISS-031 cannot be built correctly without a definitive unlock model.",
+      "recommendation": "Ensure ISS-060 explicitly produces a named unlock rule. Thor must not begin ISS-030 or ISS-031 until the unlock model is recorded in ISS-061 or a decision log."
+    },
+    {
+      "gate": "Risk Coverage",
+      "status": "warn",
+      "finding": "13 risks are identified. Most are addressed: RISK-03 via ISS-017, RISK-05 via ISS-018, RISK-08 via ISS-022, RISK-09 via ISS-061, RISK-10 via ISS-060. Two risks have no backlog issue: RISK-02 (deployment target, HIGH) and RISK-04 (GDPR child data, CRITICAL). RISK-07 (seed SME review) is captured in ISS-062-C acceptance criteria.",
+      "recommendation": "Add lightweight tracking issues for RISK-02 and RISK-04. Both are launch-blockers and will fall out of scope without a backlog owner."
+    },
+    {
+      "gate": "Dependency Ordering",
+      "status": "fail",
+      "finding": "Three dependency defects: (1) ISS-056 bcrypt depends on ISS-009 registration which is inverted - bcrypt must precede registration. (2) All 10 batch-level depends_on arrays are empty, leaving Thor with no declared batch execution sequence. (3) ISS-030 city map has no dependency on ISS-053 topics endpoint, so the map has no data source. Test issues ISS-063, ISS-064, ISS-065 also have no dependencies and could be scheduled before their subjects exist.",
+      "recommendation": "Fix ISS-056 inversion before Batch 3. Declare batch sequencing. Add ISS-053 to ISS-030 deps. Add Batch 3-6 deps to test issues."
+    },
+    {
+      "gate": "Scope Alignment",
+      "status": "pass",
+      "finding": "Backlog correctly excludes Stripe billing, adaptive difficulty, drag-and-drop question builder, sound effects, extended avatar customisation, and non-Mathropolis zones. 5 districts x 3 missions x 10 questions equals 150 questions matching the request. 68 issues for a full-stack MVP with gamification is well-proportioned.",
+      "recommendation": "No action required."
+    },
+    {
+      "gate": "Definition of Done",
+      "status": "warn",
+      "finding": "All 68 issues have acceptance criteria but quality varies. Most are functional and testable. Several are thin one-liners that will create review friction (e.g. ISS-055 HTTPS enforced, ISS-057 Soft-delete on all). ISS-060 ACs list OQ-X confirmed without specifying outputs. ISS-062-C has 6 ACs exceeding the max-5 rule. ISS-065 integration tests AC Flows complete is too vague.",
+      "recommendation": "Thor should expand thin ACs inline as issues are picked up. ISS-062-C should merge its final two ACs to reach 5."
+    },
+    {
+      "gate": "Blockers",
+      "status": "pass",
+      "finding": "No build-stopping blockers. Batch 2 is correctly positioned as an early no-dependency batch. ISS-056 inversion is a defect but only manifests when building in dependency order and can be fixed before Batch 3.",
+      "recommendation": "Proceed to build. Address COND-001 through COND-005 before Batch 3 begins."
+    },
+    {
+      "gate": "Infrastructure and Operational Readiness",
+      "status": "warn",
+      "finding": "Three delivery-critical concerns have no backlog issues: (1) deployment and hosting setup, (2) email provider selection and configuration required before parent registration can be tested end-to-end, (3) CI pipeline setup for automated test runs on PRs.",
+      "recommendation": "Add three lightweight issues in Batch 1 or Batch 2 covering deploy target provisioning, email provider setup, and basic CI configuration."
+    }
+  ],
+  "blockers": [],
+  "conditions": [
+    {
+      "id": "COND-001",
+      "description": "ISS-056 bcrypt hashing has an inverted dependency. It currently depends on ISS-009 parent registration but must be a prerequisite. Registration cannot hash passwords without bcrypt available.",
+      "resolution": "Remove ISS-009 from ISS-056 depends_on. Add ISS-056 to ISS-009 depends_on. ISS-056 requires only ISS-005. Must be resolved before Batch 3 begins."
+    },
+    {
+      "id": "COND-002",
+      "description": "All 10 batch-level depends_on arrays are empty. Thor has no declared batch execution sequence and must infer ordering solely from individual issue dependencies, which is fragile.",
+      "resolution": "Declare batch sequencing: Batch 3 on [1,2], Batch 4 on [3], Batch 5 on [4], Batch 6 on [3], Batch 7 on [4,5,6], Batch 8 on [3,5,6], Batch 9 on [4,6], Batch 10 on [7,8,9]. Update 08-split-issues.json or provide a sequencing supplement."
+    },
+    {
+      "id": "COND-003",
+      "description": "ISS-030 city map UI depends on ISS-029 and ISS-002 but has no dependency on ISS-053 topics and zones endpoint. The city map renders zone and district data from the API and has no data source without it.",
+      "resolution": "Add ISS-053 to ISS-030 depends_on before ISS-030 is scheduled."
+    },
+    {
+      "id": "COND-004",
+      "description": "Test issues ISS-063 auth unit tests, ISS-064 gamification unit tests, and ISS-065 integration tests have no dependencies and could be scheduled before the code they test exists.",
+      "resolution": "ISS-063 depends_on ISS-018 or Batch 3 complete. ISS-064 depends_on ISS-028 or Batch 5 complete. ISS-065 depends_on Batches 3-8 substantially complete. Add before Batch 10 is planned."
+    },
+    {
+      "id": "COND-005",
+      "description": "RISK-04 GDPR child data compliance (CRITICAL) and RISK-02 deployment target (HIGH) have no corresponding backlog issues and will fall out of scope with no owner.",
+      "resolution": "Add a GDPR pre-launch tracking issue covering data controller identification, privacy policy, and right-to-erasure process. Add a deployment infrastructure issue covering host selection, SQLite persistence, backup strategy, and env configuration. Both can be lightweight discovery issues."
+    }
+  ],
+  "strengths": [
+    "Strong discovery phase: 13 risks and 12 open questions documented with concrete actionable recommendations in 06-discovery.json.",
+    "Batch 2 Discovery and Decisions is explicitly included as an early delivery batch, ensuring open questions are resolved before implementation begins.",
+    "Issue granularity is appropriate: 68 issues for a full-stack MVP with gamification is well-proportioned, and most issues are small enough for a single PR.",
+    "Content production is correctly split into three parallelisable phases with an SME review gate in ISS-062-C acceptance criteria.",
+    "Subscription gating (ISS-023) and data privacy constraints (ISS-057) are included in the backlog showing security-aware planning.",
+    "Gamification is correctly decomposed into atomic building blocks (XP, rank, streak, achievements, stats) with clean sequential dependencies.",
+    "MVP scope is tightly controlled: billing deferred, single subject Mathropolis, fixed 150 question count, no adaptive difficulty.",
+    "All 68 issues have acceptance criteria present providing a testable quality baseline throughout delivery."
+  ],
+  "gaps": [
+    "No deployment or infrastructure provisioning issue: no issue covers host selection, process supervision, environment configuration, or SQLite backup. RISK-02 is documented but untracked in the backlog.",
+    "No email provider setup issue: OQ-09 and RISK-13 require an email provider before parent registration can be tested end-to-end but no issue exists to choose, configure, or test it.",
+    "No CI pipeline issue: no issue tracks automated test runs on pull requests, leaving the Batch 10 test issues without enforcement infrastructure.",
+    "GDPR compliance has no backlog owner: RISK-04 critical requires data controller identification and a privacy policy before public launch but no issue captures this.",
+    "District unlock model output is not explicitly required by any issue: ISS-060 references it as a decision to make but no issue demands a concrete artefact recording the rule for ISS-030 and ISS-031 to consume.",
+    "OQ-08 XP replay cap is not captured in ISS-061 gamification constants, leaving ISS-024 XP accumulation to be built with undefined replay behaviour.",
+    "ISS-047 admin portal layout depends on ISS-042 admin login UI which is a minor ordering inconsistency as layout typically precedes the views it hosts."
+  ],
+  "recommended_first_actions": [
+    "Start Batch 2 immediately (ISS-060 and ISS-061): resolve all blocking open questions and define gamification constants including the district unlock model and XP replay cap rule.",
+    "Fix ISS-056 dependency inversion: make bcrypt a prerequisite of registration (ISS-009 depends on ISS-056), not the other way around. Required before Batch 3.",
+    "Declare batch-level depends_on in 08-split-issues.json so Thor has a deterministic execution queue.",
+    "Add ISS-053 to ISS-030 depends_on so the city map UI has a declared data source dependency.",
+    "Create a deployment infrastructure issue in Batch 1 or Batch 2 covering host selection, SQLite persistence confirmation, and production env documentation.",
+    "Create an email provider issue before Batch 3 begins: parent registration (ISS-009) requires email verification to be testable end-to-end.",
+    "Create a GDPR tracking issue so data compliance has a backlog owner and does not become a last-minute launch blocker.",
+    "Once Batch 2 is complete and conditions are addressed, run Batches 1 and 3 in parallel as they form the critical path for all downstream work."
+  ]
+}

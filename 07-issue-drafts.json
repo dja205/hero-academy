@@ -1,0 +1,1481 @@
+{
+  "project": "hero-academy",
+  "run": "2026-03-26-gh1-mvp-build-hero-academy-11-learning-platform",
+  "generated_at": "2026-03-26T23:19:24.609Z",
+  "milestone": "MVP",
+  "total_issues": 66,
+  "issues": [
+    {
+      "id": "ISS-001",
+      "title": "Set up project structure and monorepo layout",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:critical"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Initialize /client and /server directories with TypeScript, ESLint, Prettier.",
+      "acceptance_criteria": [
+        "Project structure with /client and /server",
+        "Root package.json with build/dev scripts",
+        "ESLint and Prettier configured"
+      ],
+      "dependencies": [],
+      "epic": "Infrastructure",
+      "area": "Setup"
+    },
+    {
+      "id": "ISS-002",
+      "title": "Configure Express server with static asset serving and SPA fallback",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:critical"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Set up Express to serve React frontend at root, API at /api/v1/*, with SPA fallback.",
+      "acceptance_criteria": [
+        "Express starts on port 3001",
+        "SPA fallback returns index.html for non-API",
+        "/api/v1/health returns 200"
+      ],
+      "dependencies": [
+        "ISS-001"
+      ],
+      "epic": "Infrastructure",
+      "area": "Server"
+    },
+    {
+      "id": "ISS-003",
+      "title": "Set up SQLite database with better-sqlite3 and WAL mode",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:critical"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Initialize better-sqlite3 singleton, enable WAL mode, create ./data/hero-academy.db.",
+      "acceptance_criteria": [
+        "better-sqlite3 installed",
+        "WAL mode enabled",
+        "DB file persists"
+      ],
+      "dependencies": [
+        "ISS-001"
+      ],
+      "epic": "Infrastructure",
+      "area": "Database"
+    },
+    {
+      "id": "ISS-004",
+      "title": "Implement database migration runner and versioning",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:critical"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Create migrations/ folder with numbered SQL files, run on startup.",
+      "acceptance_criteria": [
+        "Migrations table created",
+        "Migration runner executes on startup",
+        "Already-applied migrations skipped"
+      ],
+      "dependencies": [
+        "ISS-003"
+      ],
+      "epic": "Infrastructure",
+      "area": "Database"
+    },
+    {
+      "id": "ISS-005",
+      "title": "Define and implement database schema",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:critical"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Create tables: parents, children, subjects, topics, questions, assessments, attempts, gamification, achievements, subscriptions, refresh_token_revocations.",
+      "acceptance_criteria": [
+        "All tables created with correct columns",
+        "Foreign keys enforced",
+        "Unique constraints on email and attempt_uuid"
+      ],
+      "dependencies": [
+        "ISS-004"
+      ],
+      "epic": "Infrastructure",
+      "area": "Database"
+    },
+    {
+      "id": "ISS-006",
+      "title": "Create idempotent database seed script",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:high"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Seed: 1 subject, 5 topics, 15 assessments, 150 questions, test accounts.",
+      "acceptance_criteria": [
+        "Seed script at /server/db/seed.js",
+        "Running twice produces no duplicates",
+        "All test data present"
+      ],
+      "dependencies": [
+        "ISS-005"
+      ],
+      "epic": "Infrastructure",
+      "area": "Database"
+    },
+    {
+      "id": "ISS-007",
+      "title": "Set up environment configuration and dotenv",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:high"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Create .env.example with NODE_ENV, PORT, JWT_SECRET, DATABASE_PATH.",
+      "acceptance_criteria": [
+        ".env.example exists",
+        "dotenv loaded on startup",
+        "Environment variables validated"
+      ],
+      "dependencies": [
+        "ISS-001"
+      ],
+      "epic": "Infrastructure",
+      "area": "Config"
+    },
+    {
+      "id": "ISS-008",
+      "title": "Set up development build process with Vite and Express",
+      "labels": [
+        "epic:infrastructure",
+        "type:chore",
+        "priority:high"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "npm run dev starts Vite dev server and Express simultaneously.",
+      "acceptance_criteria": [
+        "npm run dev starts both",
+        "Frontend changes trigger hot reload",
+        "API proxied from Vite to Express"
+      ],
+      "dependencies": [
+        "ISS-002",
+        "ISS-003"
+      ],
+      "epic": "Infrastructure",
+      "area": "Development"
+    },
+    {
+      "id": "ISS-009",
+      "title": "Implement parent registration with email verification",
+      "labels": [
+        "epic:auth",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "POST /api/v1/auth/register-parent: validate email/password, hash, send verification email.",
+      "acceptance_criteria": [
+        "Valid email/password creates parent",
+        "Duplicate email rejected",
+        "Verification email sent",
+        "Password bcrypted"
+      ],
+      "dependencies": [
+        "ISS-005"
+      ],
+      "epic": "Auth",
+      "area": "Parent Auth"
+    },
+    {
+      "id": "ISS-010",
+      "title": "Implement email verification endpoint",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST /api/v1/auth/verify-email: verify JWT, mark parent as email_verified.",
+      "acceptance_criteria": [
+        "Valid token marks verified",
+        "Expired token rejected",
+        "Can only verify once"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Auth",
+      "area": "Parent Auth"
+    },
+    {
+      "id": "ISS-011",
+      "title": "Implement parent login with JWT issuance",
+      "labels": [
+        "epic:auth",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST /api/v1/auth/login-parent: validate credentials, issue access and refresh tokens.",
+      "acceptance_criteria": [
+        "Valid credentials return tokens",
+        "Invalid return 401",
+        "Refresh token HttpOnly",
+        "Rate limited 5/10min"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Auth",
+      "area": "Parent Auth"
+    },
+    {
+      "id": "ISS-012",
+      "title": "Implement refresh token endpoint",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST /api/v1/auth/refresh: verify refresh token, issue new access token, rotate refresh.",
+      "acceptance_criteria": [
+        "Valid token returns new access token",
+        "New refresh token issued",
+        "Old token added to revocation list"
+      ],
+      "dependencies": [
+        "ISS-011"
+      ],
+      "epic": "Auth",
+      "area": "Token Management"
+    },
+    {
+      "id": "ISS-013",
+      "title": "Implement password reset flow",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST forgot-password and POST reset-password with secure token.",
+      "acceptance_criteria": [
+        "Reset email sent with token",
+        "New password hashed and stored",
+        "All refresh tokens revoked"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Auth",
+      "area": "Parent Auth"
+    },
+    {
+      "id": "ISS-014",
+      "title": "Implement child PIN login endpoint",
+      "labels": [
+        "epic:auth",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST /api/v1/auth/login-child: validate child_id and PIN, issue short-lived token.",
+      "acceptance_criteria": [
+        "Valid PIN returns token",
+        "Rate limited 5/10min",
+        "Token includes parent_id claim"
+      ],
+      "dependencies": [
+        "ISS-005"
+      ],
+      "epic": "Auth",
+      "area": "Child Auth"
+    },
+    {
+      "id": "ISS-015",
+      "title": "Implement admin login endpoint",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "POST /api/v1/auth/login-admin: validate admin credentials.",
+      "acceptance_criteria": [
+        "Valid credentials return tokens",
+        "Access token includes role=admin"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Auth",
+      "area": "Admin Auth"
+    },
+    {
+      "id": "ISS-016",
+      "title": "Implement JWT middleware and role-based route protection",
+      "labels": [
+        "epic:auth",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Create verifyToken, requireRole middleware for all protected routes.",
+      "acceptance_criteria": [
+        "JWT validated on all protected routes",
+        "Role guards enforce role",
+        "401 on missing/invalid token"
+      ],
+      "dependencies": [
+        "ISS-012"
+      ],
+      "epic": "Auth",
+      "area": "Middleware"
+    },
+    {
+      "id": "ISS-017",
+      "title": "Implement PIN rate-limiting",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Rate limit PIN login to 5 attempts per child per 10 minutes.",
+      "acceptance_criteria": [
+        "Rate limiter blocks after 5",
+        "Lockout lasts 10 minutes",
+        "Successful login resets counter"
+      ],
+      "dependencies": [
+        "ISS-014"
+      ],
+      "epic": "Auth",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-018",
+      "title": "Implement logout with token revocation",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "POST /api/v1/auth/logout: add refresh token to revocation list.",
+      "acceptance_criteria": [
+        "Refresh token revoked",
+        "Cookie cleared",
+        "Subsequent refresh fails"
+      ],
+      "dependencies": [
+        "ISS-012"
+      ],
+      "epic": "Auth",
+      "area": "Token Management"
+    },
+    {
+      "id": "ISS-019",
+      "title": "Implement question bank CRUD (admin)",
+      "labels": [
+        "epic:assessment",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST/GET/PUT/DELETE /api/v1/admin/questions with soft-delete.",
+      "acceptance_criteria": [
+        "Create stores new",
+        "List paginates",
+        "Update modifies",
+        "Delete soft-deletes"
+      ],
+      "dependencies": [
+        "ISS-005",
+        "ISS-016"
+      ],
+      "epic": "Assessment",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-020",
+      "title": "Implement assessment CRUD (admin)",
+      "labels": [
+        "epic:assessment",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST/GET/PUT/DELETE /api/v1/admin/assessments with question arrays.",
+      "acceptance_criteria": [
+        "Create stores new",
+        "question_ids reorderable",
+        "Deleted excluded from list"
+      ],
+      "dependencies": [
+        "ISS-019"
+      ],
+      "epic": "Assessment",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-021",
+      "title": "Implement topic-based assessment fetch (child)",
+      "labels": [
+        "epic:assessment",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "GET /api/v1/assessments/by-topic/:topic_id with questions (no answers).",
+      "acceptance_criteria": [
+        "Returns non-deleted",
+        "Questions without answers",
+        "Child role required"
+      ],
+      "dependencies": [
+        "ISS-020"
+      ],
+      "epic": "Assessment",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-022",
+      "title": "Implement attempt submission and scoring",
+      "labels": [
+        "epic:assessment",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "POST /api/v1/attempts: score answers, compute stars/XP, trigger gamification.",
+      "acceptance_criteria": [
+        "Attempt scored correctly",
+        "Duplicate UUID rejected",
+        "Stars computed 1/2/3",
+        "XP earned correct",
+        "Gamification triggered"
+      ],
+      "dependencies": [
+        "ISS-021"
+      ],
+      "epic": "Assessment",
+      "area": "Submission"
+    },
+    {
+      "id": "ISS-023",
+      "title": "Implement subscription gating",
+      "labels": [
+        "epic:assessment",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Check plan from subscriptions (all free MVP), enforce gating.",
+      "acceptance_criteria": [
+        "Plan read from DB",
+        "Free plan passes",
+        "Gating result returned"
+      ],
+      "dependencies": [
+        "ISS-022"
+      ],
+      "epic": "Assessment",
+      "area": "Gating"
+    },
+    {
+      "id": "ISS-024",
+      "title": "Implement XP accumulation and persistence",
+      "labels": [
+        "epic:gamification",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Add xp_earned to child total_xp after each attempt.",
+      "acceptance_criteria": [
+        "XP added after attempt",
+        "XP persists",
+        "new_total_xp returned"
+      ],
+      "dependencies": [
+        "ISS-022"
+      ],
+      "epic": "Gamification",
+      "area": "XP"
+    },
+    {
+      "id": "ISS-025",
+      "title": "Implement rank tier evaluation",
+      "labels": [
+        "epic:gamification",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Evaluate rank (Recruit/Sidekick/Hero/Superhero) based on XP.",
+      "acceptance_criteria": [
+        "Rank computed from XP",
+        "Transitions detected",
+        "new_rank returned"
+      ],
+      "dependencies": [
+        "ISS-024"
+      ],
+      "epic": "Gamification",
+      "area": "Rank"
+    },
+    {
+      "id": "ISS-026",
+      "title": "Implement streak tracking",
+      "labels": [
+        "epic:gamification",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Track consecutive daily missions with best_streak.",
+      "acceptance_criteria": [
+        "Streak increments daily",
+        "Resets if gap >1 day",
+        "best_streak maintained"
+      ],
+      "dependencies": [
+        "ISS-024"
+      ],
+      "epic": "Gamification",
+      "area": "Streak"
+    },
+    {
+      "id": "ISS-027",
+      "title": "Implement achievement evaluation",
+      "labels": [
+        "epic:gamification",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Evaluate 5 badges: First Mission, Perfect Power, Hot Streak, District Champion, Zone Master.",
+      "acceptance_criteria": [
+        "Achievements evaluated",
+        "First Mission on first",
+        "Perfect Power 3 stars",
+        "new_achievements returned"
+      ],
+      "dependencies": [
+        "ISS-024"
+      ],
+      "epic": "Gamification",
+      "area": "Achievements"
+    },
+    {
+      "id": "ISS-028",
+      "title": "Implement stats aggregation API",
+      "labels": [
+        "epic:gamification",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "GET /api/v1/gamification/stats/:child_id: return aggregated stats.",
+      "acceptance_criteria": [
+        "Returns all stats",
+        "Computed from attempts",
+        "Strongest/weakest identified"
+      ],
+      "dependencies": [
+        "ISS-027"
+      ],
+      "epic": "Gamification",
+      "area": "Stats"
+    },
+    {
+      "id": "ISS-029",
+      "title": "Create child login UI",
+      "labels": [
+        "epic:child-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Child list, avatar display, 4-digit PIN keypad, in-memory storage.",
+      "acceptance_criteria": [
+        "Children list displays",
+        "Avatar shown",
+        "PIN keypad works",
+        "Stored in-memory"
+      ],
+      "dependencies": [
+        "ISS-014"
+      ],
+      "epic": "Child Portal",
+      "area": "Auth UI"
+    },
+    {
+      "id": "ISS-030",
+      "title": "Implement city map UI",
+      "labels": [
+        "epic:child-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Interactive zones/districts with unlock state, Framer Motion animations.",
+      "acceptance_criteria": [
+        "City map displays",
+        "Unlock state shown",
+        "Tap district enters",
+        "Fly-in animation"
+      ],
+      "dependencies": [
+        "ISS-029",
+        "ISS-002"
+      ],
+      "epic": "Child Portal",
+      "area": "Map"
+    },
+    {
+      "id": "ISS-031",
+      "title": "Create district detail and mission selection",
+      "labels": [
+        "epic:child-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "District showing 3 missions per topic with completion state.",
+      "acceptance_criteria": [
+        "District header displays",
+        "3 missions shown",
+        "Completion state correct",
+        "Start mission works"
+      ],
+      "dependencies": [
+        "ISS-030",
+        "ISS-021"
+      ],
+      "epic": "Child Portal",
+      "area": "Districts"
+    },
+    {
+      "id": "ISS-032",
+      "title": "Implement mission runner",
+      "labels": [
+        "epic:child-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Render questions with 4-option buttons, collect answers, display power meter.",
+      "acceptance_criteria": [
+        "Questions load",
+        "Options render",
+        "Answers captured",
+        "Power meter shows"
+      ],
+      "dependencies": [
+        "ISS-031"
+      ],
+      "epic": "Child Portal",
+      "area": "Mission"
+    },
+    {
+      "id": "ISS-033",
+      "title": "Implement mission completion feedback",
+      "labels": [
+        "epic:child-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Display score/stars/XP with animations, show rank up and achievements.",
+      "acceptance_criteria": [
+        "Completion screen",
+        "Stars animated",
+        "XP popup",
+        "Rank up highlighted"
+      ],
+      "dependencies": [
+        "ISS-032"
+      ],
+      "epic": "Child Portal",
+      "area": "Feedback"
+    },
+    {
+      "id": "ISS-034",
+      "title": "Create hero profile view",
+      "labels": [
+        "epic:child-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Display avatar, XP bar, rank, stats, achievement badges.",
+      "acceptance_criteria": [
+        "Avatar displays",
+        "XP bar shows progress",
+        "Stats load",
+        "Badges render"
+      ],
+      "dependencies": [
+        "ISS-028"
+      ],
+      "epic": "Child Portal",
+      "area": "Profile"
+    },
+    {
+      "id": "ISS-035",
+      "title": "Implement auth state management",
+      "labels": [
+        "epic:child-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Zustand store for JWT, child_id, auth state; auto-logout after 2h.",
+      "acceptance_criteria": [
+        "Auth state persists",
+        "Token in-memory",
+        "Auto-logout after inactivity",
+        "Routes protected"
+      ],
+      "dependencies": [
+        "ISS-029"
+      ],
+      "epic": "Child Portal",
+      "area": "Auth"
+    },
+    {
+      "id": "ISS-036",
+      "title": "Implement mobile-first responsive design",
+      "labels": [
+        "epic:child-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "375px+, 44px touch, WCAG AA contrast, prefers-reduced-motion.",
+      "acceptance_criteria": [
+        "Functional at 375px",
+        "Touch targets 44px",
+        "Contrast WCAG AA",
+        "Keyboard nav works"
+      ],
+      "dependencies": [
+        "ISS-030"
+      ],
+      "epic": "Child Portal",
+      "area": "UX"
+    },
+    {
+      "id": "ISS-037",
+      "title": "Implement parent registration UI",
+      "labels": [
+        "epic:parent-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Registration form: email, password, strength indicator, verification.",
+      "acceptance_criteria": [
+        "Form accepts valid",
+        "Duplicate email rejected",
+        "Verification sent",
+        "User-friendly errors"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Parent Portal",
+      "area": "Auth"
+    },
+    {
+      "id": "ISS-038",
+      "title": "Create parent login UI",
+      "labels": [
+        "epic:parent-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Login form: email, password.",
+      "acceptance_criteria": [
+        "Form accepts",
+        "JWT stored",
+        "Error on failure"
+      ],
+      "dependencies": [
+        "ISS-011"
+      ],
+      "epic": "Parent Portal",
+      "area": "Auth"
+    },
+    {
+      "id": "ISS-039",
+      "title": "Implement parent dashboard",
+      "labels": [
+        "epic:parent-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Children list, add/edit/delete child, Switch to Child View.",
+      "acceptance_criteria": [
+        "Children list loads",
+        "Add creates",
+        "Edit updates",
+        "Delete works",
+        "Switch works"
+      ],
+      "dependencies": [
+        "ISS-011",
+        "ISS-028"
+      ],
+      "epic": "Parent Portal",
+      "area": "Management"
+    },
+    {
+      "id": "ISS-040",
+      "title": "Implement child progress dashboard",
+      "labels": [
+        "epic:parent-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Child stats: XP, rank, missions, score, streaks, achievements.",
+      "acceptance_criteria": [
+        "Stats load",
+        "All metrics display",
+        "Badges render",
+        "Activity shown"
+      ],
+      "dependencies": [
+        "ISS-039",
+        "ISS-028"
+      ],
+      "epic": "Parent Portal",
+      "area": "Progress"
+    },
+    {
+      "id": "ISS-041",
+      "title": "Implement subscription display",
+      "labels": [
+        "epic:parent-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Display plan (Free MVP), read-only details.",
+      "acceptance_criteria": [
+        "Plan badge displays",
+        "Read from API",
+        "UI clear"
+      ],
+      "dependencies": [
+        "ISS-039"
+      ],
+      "epic": "Parent Portal",
+      "area": "Subscription"
+    },
+    {
+      "id": "ISS-042",
+      "title": "Implement admin login UI",
+      "labels": [
+        "epic:admin-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Admin login form: email, password.",
+      "acceptance_criteria": [
+        "Form accepts",
+        "Valid grants access",
+        "Error on failure"
+      ],
+      "dependencies": [
+        "ISS-015"
+      ],
+      "epic": "Admin Portal",
+      "area": "Auth"
+    },
+    {
+      "id": "ISS-043",
+      "title": "Implement question management",
+      "labels": [
+        "epic:admin-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Question list with pagination, create/edit/delete forms.",
+      "acceptance_criteria": [
+        "List loads",
+        "Create works",
+        "Edit pre-fills",
+        "Delete soft-deletes"
+      ],
+      "dependencies": [
+        "ISS-019"
+      ],
+      "epic": "Admin Portal",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-044",
+      "title": "Implement assessment management",
+      "labels": [
+        "epic:admin-portal",
+        "priority:critical",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Assessment list with create/edit/delete and question assignment.",
+      "acceptance_criteria": [
+        "List loads",
+        "Create works",
+        "Questions assignable",
+        "Delete works"
+      ],
+      "dependencies": [
+        "ISS-043"
+      ],
+      "epic": "Admin Portal",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-045",
+      "title": "Implement user management",
+      "labels": [
+        "epic:admin-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Parent/child lists, view details, soft-delete.",
+      "acceptance_criteria": [
+        "Parent list loads",
+        "Detail shows children",
+        "Child list filters",
+        "Delete works"
+      ],
+      "dependencies": [
+        "ISS-016"
+      ],
+      "epic": "Admin Portal",
+      "area": "Users"
+    },
+    {
+      "id": "ISS-046",
+      "title": "Implement subscription overview",
+      "labels": [
+        "epic:admin-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Subscription stats and parent subscription list.",
+      "acceptance_criteria": [
+        "Stats display",
+        "Parent list shows plans",
+        "All free for MVP"
+      ],
+      "dependencies": [
+        "ISS-045"
+      ],
+      "epic": "Admin Portal",
+      "area": "Subscriptions"
+    },
+    {
+      "id": "ISS-047",
+      "title": "Create admin portal layout",
+      "labels": [
+        "epic:admin-portal",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Layout: header, sidebar, main; reusable table/form/modal components.",
+      "acceptance_criteria": [
+        "Layout loads",
+        "Navigation works",
+        "Table functional",
+        "Forms validated"
+      ],
+      "dependencies": [
+        "ISS-042"
+      ],
+      "epic": "Admin Portal",
+      "area": "Framework"
+    },
+    {
+      "id": "ISS-048",
+      "title": "Implement API client interceptor",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "HTTP client with interceptor for token refresh on 401.",
+      "acceptance_criteria": [
+        "Auth header included",
+        "401 triggers refresh",
+        "Retry works",
+        "Child tokens clear"
+      ],
+      "dependencies": [
+        "ISS-012"
+      ],
+      "epic": "Infrastructure",
+      "area": "API"
+    },
+    {
+      "id": "ISS-049",
+      "title": "Create API service for child portal",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Reusable methods: getZones, getAssessmentsByTopic, submitAttempt, getChildStats.",
+      "acceptance_criteria": [
+        "Methods typed",
+        "Error handling",
+        "All wrapped"
+      ],
+      "dependencies": [
+        "ISS-048"
+      ],
+      "epic": "Infrastructure",
+      "area": "API"
+    },
+    {
+      "id": "ISS-050",
+      "title": "Create API service for parent portal",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Reusable methods: getChildren, addChild, updateChild, deleteChild.",
+      "acceptance_criteria": [
+        "Methods typed",
+        "Error handling",
+        "All wrapped"
+      ],
+      "dependencies": [
+        "ISS-048"
+      ],
+      "epic": "Infrastructure",
+      "area": "API"
+    },
+    {
+      "id": "ISS-051",
+      "title": "Create API service for admin",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Reusable methods for CRUD on questions, assessments, users.",
+      "acceptance_criteria": [
+        "Methods typed",
+        "All CRUD wrapped",
+        "Pagination"
+      ],
+      "dependencies": [
+        "ISS-048"
+      ],
+      "epic": "Infrastructure",
+      "area": "API"
+    },
+    {
+      "id": "ISS-052",
+      "title": "Implement child management endpoints",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "POST/GET/PUT/DELETE /api/v1/parent/children.",
+      "acceptance_criteria": [
+        "Create generates PIN",
+        "List returns non-deleted",
+        "Update works",
+        "Delete soft-deletes"
+      ],
+      "dependencies": [
+        "ISS-016"
+      ],
+      "epic": "Infrastructure",
+      "area": "Child Mgmt"
+    },
+    {
+      "id": "ISS-053",
+      "title": "Implement topics and zones endpoints",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "GET /api/v1/topics and GET /api/v1/zones with unlock state.",
+      "acceptance_criteria": [
+        "Topics returned",
+        "Zones grouped",
+        "Unlock computed",
+        "Progress included"
+      ],
+      "dependencies": [
+        "ISS-005"
+      ],
+      "epic": "Infrastructure",
+      "area": "Content"
+    },
+    {
+      "id": "ISS-054",
+      "title": "Implement attempt history endpoints",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:feature"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "GET /api/v1/attempts/history and GET /api/v1/attempts/:id.",
+      "acceptance_criteria": [
+        "History returns",
+        "Pagination works",
+        "Detail returned",
+        "Answers hidden"
+      ],
+      "dependencies": [
+        "ISS-022"
+      ],
+      "epic": "Infrastructure",
+      "area": "History"
+    },
+    {
+      "id": "ISS-055",
+      "title": "Implement HTTPS and secure cookies",
+      "labels": [
+        "epic:infrastructure",
+        "priority:critical",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "HTTPS enforced, HttpOnly/Secure/SameSite cookies, HSTS header.",
+      "acceptance_criteria": [
+        "HTTPS enforced",
+        "Cookies HttpOnly",
+        "Secure flag set",
+        "SameSite=Strict"
+      ],
+      "dependencies": [
+        "ISS-002"
+      ],
+      "epic": "Infrastructure",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-056",
+      "title": "Implement bcrypt password hashing",
+      "labels": [
+        "epic:auth",
+        "priority:critical",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "All passwords bcrypted (10 rounds) before storage.",
+      "acceptance_criteria": [
+        "All passwords bcrypted",
+        "Bcrypt comparison",
+        "Never exposed",
+        "Consistent rounds"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Auth",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-057",
+      "title": "Enforce data privacy constraints",
+      "labels": [
+        "epic:infrastructure",
+        "priority:high",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Child PII minimal, parent email protected, soft-delete strategy.",
+      "acceptance_criteria": [
+        "Child responses exclude parent email",
+        "Child no email field",
+        "Soft-delete on all"
+      ],
+      "dependencies": [
+        "ISS-016"
+      ],
+      "epic": "Infrastructure",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-058",
+      "title": "Implement input validation",
+      "labels": [
+        "epic:infrastructure",
+        "priority:critical",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 2,
+      "description": "Validate inputs, parameterized SQL queries.",
+      "acceptance_criteria": [
+        "All inputs validated",
+        "SQL parameterized",
+        "Error messages safe",
+        "Constraints enforced"
+      ],
+      "dependencies": [
+        "ISS-009"
+      ],
+      "epic": "Infrastructure",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-059",
+      "title": "Implement auth rate limiting",
+      "labels": [
+        "epic:auth",
+        "priority:high",
+        "type:security"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 1,
+      "description": "Rate limit login: 5/10min (parent/child), 3/hour (forgot-password).",
+      "acceptance_criteria": [
+        "Rate limiter applied",
+        "Limits enforced",
+        "Headers included",
+        "429 on limit"
+      ],
+      "dependencies": [
+        "ISS-011"
+      ],
+      "epic": "Auth",
+      "area": "Security"
+    },
+    {
+      "id": "ISS-060",
+      "title": "Resolve blocking open questions",
+      "labels": [
+        "priority:critical",
+        "type:discovery"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 4,
+      "description": "Resolve OQ-1 (SPA), OQ-2 (deployment), OQ-3 (email), OQ-5 (avatar), OQ-6 (ordering), OQ-8 (admin).",
+      "acceptance_criteria": [
+        "OQ-1 confirmed",
+        "OQ-2 answered",
+        "OQ-3 resolved",
+        "OQ-5 defined",
+        "OQ-6 decided",
+        "OQ-8 decided"
+      ],
+      "dependencies": [],
+      "epic": "Discovery",
+      "area": "Requirements"
+    },
+    {
+      "id": "ISS-061",
+      "title": "Define gamification constants",
+      "labels": [
+        "priority:high",
+        "type:discovery"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "XP schedule, achievement triggers, rank thresholds.",
+      "acceptance_criteria": [
+        "XP schedule defined",
+        "Conditions explicit",
+        "Thresholds confirmed",
+        "Constants file created"
+      ],
+      "dependencies": [],
+      "epic": "Discovery",
+      "area": "Gamification"
+    },
+    {
+      "id": "ISS-062",
+      "title": "Produce seed questions (150)",
+      "labels": [
+        "priority:critical",
+        "type:task"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 16,
+      "description": "150 11+ math questions (10 per assessment), SME reviewed.",
+      "acceptance_criteria": [
+        "150 questions written",
+        "Properly formatted",
+        "SME reviewed",
+        "Integrated"
+      ],
+      "dependencies": [],
+      "epic": "Content",
+      "area": "Questions"
+    },
+    {
+      "id": "ISS-063",
+      "title": "Write auth service unit tests",
+      "labels": [
+        "priority:medium",
+        "type:task"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Jest unit tests for registration, login, token (80%+ coverage).",
+      "acceptance_criteria": [
+        "Tests exist",
+        "Happy path tested",
+        "Errors tested",
+        "80%+ coverage"
+      ],
+      "dependencies": [],
+      "epic": "Testing",
+      "area": "Unit"
+    },
+    {
+      "id": "ISS-064",
+      "title": "Write gamification unit tests",
+      "labels": [
+        "priority:medium",
+        "type:task"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Jest unit tests for scoring, XP, rank, streak, achievements (75%+).",
+      "acceptance_criteria": [
+        "Tests exist",
+        "Scoring tested",
+        "Gamification tested",
+        "Edge cases tested"
+      ],
+      "dependencies": [],
+      "epic": "Testing",
+      "area": "Unit"
+    },
+    {
+      "id": "ISS-065",
+      "title": "Write integration tests",
+      "labels": [
+        "priority:medium",
+        "type:task"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 3,
+      "description": "Integration tests: registration -> login -> refresh -> logout.",
+      "acceptance_criteria": [
+        "Tests exist",
+        "Flows complete",
+        "All pass"
+      ],
+      "dependencies": [],
+      "epic": "Testing",
+      "area": "Integration"
+    },
+    {
+      "id": "ISS-066",
+      "title": "Manual mobile testing",
+      "labels": [
+        "priority:medium",
+        "type:task"
+      ],
+      "milestone": "MVP",
+      "estimate_hours": 4,
+      "description": "Test child/parent on 375px device, verify responsiveness.",
+      "acceptance_criteria": [
+        "Child portal tested",
+        "Parent portal tested",
+        "All flows work",
+        "Responsive verified"
+      ],
+      "dependencies": [],
+      "epic": "Testing",
+      "area": "QA"
+    }
+  ]
+}

@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hero Academy — MVP Wireframe</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111122; font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  #app { width: 100%; max-width: 430px; min-height: 100vh; background: #0a0a1a; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+  /* TAB NAV */
+  #tab-nav { display: flex; overflow-x: auto; background: #12122a; border-bottom: 1px solid #1e1e4a; scrollbar-width: none; flex-shrink: 0; }
+  #tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: 0 0 auto; padding: 8px 12px; font-size: 10px; font-weight: 700; color: #6b7280; background: none; border: none; cursor: pointer; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+  .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+  .tab-btn:hover:not(.active) { color: #9ca3af; }
+
+  /* SCREENS */
+  .screen { display: none; flex: 1; overflow-y: auto; padding: 20px 16px 80px; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* COMMON */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 700; border: none; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; width: 100%; }
+  .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; width: 100%; }
+  .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+  .btn-ghost { background: #1e1e4a; color: #9ca3af; width: 100%; }
+  .card { background: #12122a; border: 1px solid #1e1e4a; border-radius: 14px; padding: 16px; }
+  .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .tag { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  input[type=text], input[type=email], input[type=password] { width: 100%; background: #1a1a3a; border: 1px solid #2e2e5a; border-radius: 10px; padding: 12px 14px; color: #e5e7eb; font-size: 15px; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: #3b82f6; }
+  input::placeholder { color: #4b5563; }
+
+  /* PROGRESS BAR */
+  .progress-track { background: #1e1e4a; border-radius: 99px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+
+  /* ===== SCREEN 1: LANDING ===== */
+  .skyline { width: 100%; height: 160px; position: relative; margin-bottom: -4px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; background: linear-gradient(180deg, #0a0a1a 0%, #0d0d2b 60%, #111133 100%); }
+  .building { position: absolute; bottom: 0; background: #0d0d2b; border: 1px solid #1e1e3a; }
+  .window { position: absolute; width: 4px; height: 5px; background: #fbbf24; border-radius: 1px; opacity: 0.7; }
+  .hero-logo { font-size: 42px; font-weight: 900; text-align: center; background: linear-gradient(135deg, #fbbf24, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
+  .hero-tagline { text-align: center; color: #9ca3af; font-size: 14px; margin-top: 6px; }
+  .hero-badge { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .badge-pill { background: #1e1e4a; border: 1px solid #2e2e5a; border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #c4b5fd; font-weight: 600; }
+  .stars-row { display: flex; justify-content: center; gap: 2px; color: #fbbf24; font-size: 18px; }
+
+  /* ===== SCREEN 2: AUTH ===== */
+  .auth-toggle { display: flex; background: #1a1a3a; border-radius: 10px; padding: 3px; margin-bottom: 20px; }
+  .auth-toggle-btn { flex: 1; padding: 9px; border-radius: 8px; border: none; background: none; font-weight: 700; font-size: 14px; color: #6b7280; cursor: pointer; transition: background 0.2s, color 0.2s; }
+  .auth-toggle-btn.active { background: #3b82f6; color: #fff; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 6px; }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: #4b5563; font-size: 13px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1e1e4a; }
+
+  /* ===== SCREEN 3: PARENT DASHBOARD ===== */
+  .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .child-card { background: #12122a; border: 1px solid #1e1e4a; border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+  .child-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+  .child-avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .child-info { flex: 1; }
+  .child-name { font-size: 16px; font-weight: 700; color: #f9fafb; }
+  .child-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .child-xp { font-size: 12px; font-weight: 700; color: #fbbf24; }
+  .stat-mini-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .stat-mini { background: #1a1a3a; border-radius: 8px; padding: 8px; text-align: center; }
+  .stat-mini-val { font-size: 18px; font-weight: 800; color: #f9fafb; }
+  .stat-mini-lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .add-child-btn { border: 2px dashed #2e2e5a; background: none; border-radius: 14px; padding: 16px; width: 100%; color: #6b7280; font-size: 15px; font-weight: 600; cursor: pointer; transition: border-color 0.2s, color 0.2s; margin-top: 4px; }
+  .add-child-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+  .section-title { font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin: 20px 0 10px; }
+
+  /* ===== SCREEN 4: PIN LOGIN ===== */
+  .pin-avatar { width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 52px; border: 3px solid #3b82f6; box-shadow: 0 0 24px rgba(59,130,246,0.4); }
+  .pin-name { text-align: center; font-size: 22px; font-weight: 800; color: #f9fafb; }
+  .pin-dots { display: flex; gap: 14px; justify-content: center; margin: 24px 0; }
+  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #3b82f6; transition: background 0.15s; }
+  .pin-dot.filled { background: #3b82f6; box-shadow: 0 0 8px rgba(59,130,246,0.6); }
+  .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pin-key { background: #12122a; border: 1px solid #1e1e4a; border-radius: 12px; padding: 16px; font-size: 22px; font-weight: 700; color: #f9fafb; text-align: center; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+  .pin-key:hover { background: #1e1e4a; transform: scale(1.05); }
+  .pin-key:active { transform: scale(0.97); }
+  .pin-key.del { font-size: 18px; color: #ef4444; }
+  .pin-key.empty { background: none; border: none; cursor: default; }
+  .pin-key.empty:hover { transform: none; }
+
+  /* ===== SCREEN 5: CITY MAP ===== */
+  .city-map { position: relative; width: 100%; height: 340px; background: linear-gradient(180deg, #0a0a1a 0%, #0d1a2a 100%); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+  .city-sky { position: absolute; top: 0; left: 0; right: 0; height: 80px; background: linear-gradient(180deg, #0a0a1a, #0d1133); }
+  .city-moon { position: absolute; top: 14px; right: 20px; width: 32px; height: 32px; background: #fbbf24; border-radius: 50%; box-shadow: 0 0 20px rgba(251,191,36,0.4); }
+  .district-zone { position: absolute; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; }
+  .district-zone:hover { transform: scale(1.08); }
+  .district-zone:hover .dz-label { color: #fbbf24; }
+  .dz-building { display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+  .dz-tower { border-radius: 3px 3px 0 0; }
+  .dz-label { font-size: 9px; font-weight: 700; color: #9ca3af; text-align: center; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; max-width: 60px; }
+  .dz-label.active-label { color: #ef4444; }
+  .dz-glow { box-shadow: 0 0 16px currentColor; }
+  .city-road { position: absolute; bottom: 0; left: 0; right: 0; height: 28px; background: #111128; border-top: 2px solid #1e1e4a; }
+  .road-line { position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: repeating-linear-gradient(90deg, #fbbf24 0, #fbbf24 20px, transparent 20px, transparent 40px); transform: translateY(-50%); }
+  .zone-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .zone-pill { display: flex; align-items: center; gap: 8px; background: #12122a; border: 1px solid #1e1e4a; border-radius: 10px; padding: 8px 10px; cursor: pointer; transition: border-color 0.2s; }
+  .zone-pill:hover { border-color: #3b82f6; }
+  .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .zone-pill-name { font-size: 12px; font-weight: 600; color: #d1d5db; }
+
+  /* ===== SCREEN 6: DISTRICT VIEW ===== */
+  .district-header { background: linear-gradient(135deg, #1e1e4a, #0d0d2b); border: 1px solid #3b82f6; border-radius: 14px; padding: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .district-icon { font-size: 40px; }
+  .district-title { font-size: 20px; font-weight: 800; color: #f9fafb; }
+  .district-subtitle { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .mission-row { background: #12122a; border: 1px solid #1e1e4a; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+  .mission-row:hover { border-color: #3b82f6; transform: translateX(3px); }
+  .mission-row.locked { opacity: 0.4; cursor: not-allowed; }
+  .mission-row.locked:hover { transform: none; border-color: #1e1e4a; }
+  .mission-icon-wrap { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .mission-info { flex: 1; }
+  .mission-name { font-size: 14px; font-weight: 700; color: #f9fafb; }
+  .mission-meta { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .mission-stars { font-size: 14px; letter-spacing: 1px; }
+
+  /* ===== SCREEN 7: MISSION ===== */
+  .power-meter { margin-bottom: 16px; }
+  .power-label { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .power-label span { font-size: 12px; font-weight: 700; }
+  .power-fill { background: linear-gradient(90deg, #22c55e, #fbbf24, #ef4444); }
+  .q-counter { text-align: center; font-size: 12px; color: #6b7280; font-weight: 600; margin-bottom: 12px; }
+  .question-card { background: #12122a; border: 1px solid #1e1e4a; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .question-category { font-size: 11px; font-weight: 700; color: #a855f7; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .question-text { font-size: 18px; font-weight: 700; color: #f9fafb; line-height: 1.4; }
+  .question-hint { font-size: 13px; color: #6b7280; margin-top: 8px; font-style: italic; }
+  .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .answer-btn { background: #12122a; border: 2px solid #1e1e4a; border-radius: 12px; padding: 16px 12px; font-size: 16px; font-weight: 700; color: #f9fafb; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .answer-btn:hover { border-color: #3b82f6; background: #1a1a3a; }
+  .answer-btn.selected { border-color: #3b82f6; background: rgba(59,130,246,0.15); color: #93c5fd; }
+  .answer-btn.correct { border-color: #22c55e; background: rgba(34,197,94,0.15); color: #86efac; }
+  .answer-btn.wrong { border-color: #ef4444; background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .mission-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+
+  /* ===== SCREEN 8: MISSION COMPLETE ===== */
+  .complete-hero { text-align: center; padding: 20px 0; }
+  .complete-emoji { font-size: 72px; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+  .complete-title { font-size: 28px; font-weight: 900; color: #fbbf24; margin-top: 10px; }
+  .complete-subtitle { font-size: 14px; color: #9ca3af; margin-top: 4px; }
+  .score-display { font-size: 52px; font-weight: 900; text-align: center; color: #f9fafb; line-height: 1; margin: 4px 0; }
+  .stars-large { display: flex; justify-content: center; gap: 8px; font-size: 36px; margin: 12px 0; }
+  .star-lit { filter: drop-shadow(0 0 8px #fbbf24); }
+  .star-dim { filter: grayscale(1) opacity(0.3); }
+  .xp-gained { text-align: center; font-size: 28px; font-weight: 900; color: #22c55e; }
+  .xp-label { font-size: 12px; color: #6b7280; text-align: center; }
+  .rank-section { margin-top: 16px; }
+  .rank-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .rank-name { font-size: 14px; font-weight: 700; color: #a855f7; }
+  .rank-xp { font-size: 12px; color: #6b7280; }
+  .complete-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+  /* ===== SCREEN 9: HERO PROFILE ===== */
+  .profile-hero { text-align: center; padding: 16px 0 20px; }
+  .profile-avatar { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 48px; border: 3px solid #a855f7; box-shadow: 0 0 28px rgba(168,85,247,0.35); }
+  .profile-name { font-size: 24px; font-weight: 900; color: #f9fafb; }
+  .rank-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #a855f7, #7c3aed); border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 700; color: #fff; margin-top: 6px; }
+  .xp-section { margin: 16px 0; }
+  .xp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .xp-total { font-size: 13px; font-weight: 700; color: #a855f7; }
+  .xp-next { font-size: 12px; color: #6b7280; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: #12122a; border: 1px solid #1e1e4a; border-radius: 12px; padding: 12px 8px; text-align: center; }
+  .stat-icon { font-size: 22px; margin-bottom: 4px; }
+  .stat-val { font-size: 20px; font-weight: 800; color: #f9fafb; }
+  .stat-lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .badges-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .badge-item { background: #12122a; border: 1px solid #1e1e4a; border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .badge-item.locked { opacity: 0.35; }
+  .badge-emoji { font-size: 24px; }
+  .badge-name { font-size: 9px; color: #6b7280; margin-top: 4px; font-weight: 600; }
+
+  /* SHARED UTILS */
+  h2 { font-size: 22px; font-weight: 800; color: #f9fafb; margin-bottom: 4px; }
+  h3 { font-size: 16px; font-weight: 700; color: #f9fafb; }
+  p { color: #9ca3af; font-size: 14px; line-height: 1.5; }
+  .mt-4 { margin-top: 4px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-8 { margin-bottom: 8px; }
+  .text-center { text-align: center; }
+  .text-sm { font-size: 13px; }
+  .text-yellow { color: #fbbf24; }
+  .text-green { color: #22c55e; }
+  .text-blue { color: #3b82f6; }
+  .text-purple { color: #a855f7; }
+  .text-red { color: #ef4444; }
+  .gap-col { display: flex; flex-direction: column; gap: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TAB NAV -->
+  <div id="tab-nav">
+    <button class="tab-btn active" onclick="showScreen('landing')">🏠 Landing</button>
+    <button class="tab-btn" onclick="showScreen('auth')">🔐 Login</button>
+    <button class="tab-btn" onclick="showScreen('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" onclick="showScreen('pin')">🔑 PIN Login</button>
+    <button class="tab-btn" onclick="showScreen('citymap')">🗺️ City Map</button>
+    <button class="tab-btn" onclick="showScreen('district')">🏢 District</button>
+    <button class="tab-btn" onclick="showScreen('mission')">⚡ Mission</button>
+    <button class="tab-btn" onclick="showScreen('complete')">🏆 Complete</button>
+    <button class="tab-btn" onclick="showScreen('profile')">🦸 Profile</button>
+  </div>
+
+  <!-- ===== SCREEN 1: LANDING ===== -->
+  <div id="screen-landing" class="screen active">
+    <div class="skyline">
+      <div class="city-moon"></div>
+      <!-- buildings -->
+      <div class="building" style="left:2%;width:36px;height:90px;">
+        <div class="window" style="top:10px;left:6px"></div><div class="window" style="top:10px;left:14px;opacity:0.3"></div>
+        <div class="window" style="top:22px;left:6px;opacity:0.3"></div><div class="window" style="top:22px;left:14px"></div>
+        <div class="window" style="top:34px;left:6px"></div><div class="window" style="top:46px;left:14px"></div>
+      </div>
+      <div class="building" style="left:10%;width:28px;height:60px;">
+        <div class="window" style="top:8px;left:5px"></div><div class="window" style="top:8px;left:14px;opacity:0.3"></div>
+        <div class="window" style="top:20px;left:5px;opacity:0.3"></div><div class="window" style="top:32px;left:5px"></div>
+      </div>
+      <div class="building" style="left:18%;width:50px;height:130px;background:#0f0f2a;">
+        <div class="window" style="top:10px;left:8px"></div><div class="window" style="top:10px;left:20px;opacity:0.3"></div><div class="window" style="top:10px;left:32px"></div>
+        <div class="window" style="top:24px;left:8px;opacity:0.3"></div><div class="window" style="top:24px;left:32px"></div>
+        <div class="window" style="top:38px;left:8px"></div><div class="window" style="top:38px;left:20px;opacity:0.3"></div>
+        <div class="window" style="top:52px;left:8px;opacity:0.3"></div><div class="window" style="top:52px;left:32px"></div>
+        <div class="window" style="top:66px;left:8px"></div><div class="window" style="top:80px;left:8px;opacity:0.3"></div>
+      </div>
+      <div class="building" style="left:32%;width:20px;height:45px;">
+        <div class="window" style="top:8px;left:5px"></div><div class="window" style="top:20px;left:5px;opacity:0.3"></div>
+      </div>
+      <div class="building" style="left:38%;width:44px;height:110px;background:#0f0f28;">
+        <div class="building" style="position:absolute;top:-20px;left:15px;width:14px;height:20px;background:#0f0f28;border:none;"></div>
+        <div class="window" style="top:10px;left:7px"></div><div class="window" style="top:10px;left:20px;opacity:0.3"></div>
+        <div class="window" style="top:26px;left:7px;opacity:0.3"></div><div class="window" style="top:26px;left:20px"></div>
+        <div class="window" style="top:42px;left:7px"></div><div class="window" style="top:58px;left:20px;opacity:0.3"></div>
+      </div>
+      <div class="building" style="right:30%;width:30px;height:72px;">
+        <div class="window" style="top:10px;left:6px"></div><div class="window" style="top:10px;left:16px;opacity:0.3"></div>
+        <div class="window" style="top:26px;left:6px;opacity:0.3"></div><div class="window" style="top:40px;left:16px"></div>
+      </div>
+      <div class="building" style="right:16%;width:48px;height:120px;background:#0f0f2a;">
+        <div class="window" style="top:10px;left:8px"></div><div class="window" style="top:10px;left:28px;opacity:0.3"></div>
+        <div class="window" style="top:24px;left:8px;opacity:0.3"></div><div class="window" style="top:24px;left:28px"></div>
+        <div class="window" style="top:38px;left:8px"></div><div class="window" style="top:52px;left:28px;opacity:0.3"></div>
+        <div class="window" style="top:66px;left:8px;opacity:0.3"></div><div class="window" style="top:80px;left:8px"></div>
+      </div>
+      <div class="building" style="right:4%;width:32px;height:80px;">
+        <div class="window" style="top:10px;left:6px;opacity:0.3"></div><div class="window" style="top:10px;left:17px"></div>
+        <div class="window" style="top:24px;left:6px"></div><div class="window" style="top:38px;left:17px;opacity:0.3"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="hero-logo">⚡ HERO ACADEMY</div>
+      <div class="hero-tagline">Master 11+ Maths — Become a Legend</div>
+      <div class="stars-row mt-8">⭐⭐⭐⭐⭐</div>
+      <div style="text-align:center;font-size:12px;color:#4b5563;margin-top:4px;">Trusted by 2,400+ families</div>
+    </div>
+
+    <div class="hero-badge mt-16">
+      <div class="badge-pill">🧮 Maths Powers</div>
+      <div class="badge-pill">🎮 Game-Based</div>
+      <div class="badge-pill">📈 Progress Tracking</div>
+      <div class="badge-pill">🏆 Leaderboards</div>
+    </div>
+
+    <div class="card mt-16" style="border-color:#3b82f6;background:linear-gradient(135deg,#0d1a3a,#0a0a1a);">
+      <div style="font-size:13px;color:#93c5fd;font-weight:700;margin-bottom:6px;">🎯 Designed for 11+ Success</div>
+      <p style="font-size:13px;color:#9ca3af;">Adaptive missions covering all CEM & GL Assessment topics. Children earn XP, unlock heroes, and build real exam confidence.</p>
+    </div>
+
+    <div class="gap-col mt-16">
+      <button class="btn btn-primary" onclick="showScreen('auth')">🚀 Start Your Journey</button>
+      <button class="btn btn-ghost" onclick="showScreen('auth')">🔐 Already have an account? Log in</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-around;margin-top:24px;">
+      <div style="text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:#fbbf24;">2,400+</div>
+        <div style="font-size:11px;color:#6b7280;">Families</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:#22c55e;">94%</div>
+        <div style="font-size:11px;color:#6b7280;">Pass Rate</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:#3b82f6;">50K+</div>
+        <div style="font-size:11px;color:#6b7280;">Missions Done</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 2: AUTH ===== -->
+  <div id="screen-auth" class="screen">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:36px">⚡</div>
+      <h2>Hero Academy</h2>
+      <p class="text-sm mt-4">Parent / Guardian Portal</p>
+    </div>
+    <div class="auth-toggle">
+      <button class="auth-toggle-btn active" id="login-tab" onclick="switchAuth('login')">Log In</button>
+      <button class="auth-toggle-btn" id="signup-tab" onclick="switchAuth('signup')">Sign Up</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input type="email" placeholder="parent@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" placeholder="••••••••">
+      </div>
+      <div style="text-align:right;margin-bottom:16px;">
+        <span style="font-size:13px;color:#3b82f6;cursor:pointer;">Forgot password?</span>
+      </div>
+      <button class="btn btn-primary" onclick="showScreen('dashboard')">🔐 Log In</button>
+      <div class="divider">or continue with</div>
+      <button class="btn btn-ghost" style="margin-bottom:8px;">🍎 Continue with Apple</button>
+      <button class="btn btn-ghost">🔵 Continue with Google</button>
+    </div>
+    <div id="signup-form" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Your full name</label>
+        <input type="text" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input type="email" placeholder="parent@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Create password</label>
+        <input type="password" placeholder="Minimum 8 characters">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm password</label>
+        <input type="password" placeholder="Repeat password">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="showScreen('dashboard')">🚀 Create Account</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 3: PARENT DASHBOARD ===== -->
+  <div id="screen-dashboard" class="screen">
+    <div class="dash-header">
+      <div>
+        <div style="font-size:13px;color:#6b7280;">Good evening 👋</div>
+        <h2 style="margin-bottom:0;">Jane Smith</h2>
+      </div>
+      <div style="width:42px;height:42px;border-radius:50%;background:#1e1e4a;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;">👩</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div class="card" style="border-color:#3b82f640;">
+        <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">This Week</div>
+        <div style="font-size:28px;font-weight:800;color:#3b82f6;margin-top:4px;">12</div>
+        <div style="font-size:12px;color:#6b7280;">Missions done</div>
+      </div>
+      <div class="card" style="border-color:#22c55e40;">
+        <div style="font-size:11px;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Avg. Score</div>
+        <div style="font-size:28px;font-weight:800;color:#22c55e;margin-top:4px;">78%</div>
+        <div style="font-size:12px;color:#6b7280;">Accuracy</div>
+      </div>
+    </div>
+
+    <div class="section-title">Your Heroes</div>
+    <div class="child-card" onclick="showScreen('pin')">
+      <div class="child-avatar" style="background:linear-gradient(135deg,#1e1e4a,#0d0d2b);">🦸‍♂️</div>
+      <div class="child-info">
+        <div class="child-name">Alex — Bolt Runner</div>
+        <div class="child-meta">Year 5 · Mathropolis · Rank: Silver Cadet</div>
+        <div style="margin-top:6px;">
+          <div class="progress-track" style="height:5px;">
+            <div class="progress-fill" style="width:62%;background:linear-gradient(90deg,#3b82f6,#a855f7);"></div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="child-xp">⚡ 840 XP</div>
+        <div style="font-size:18px;margin-top:4px;">⭐⭐</div>
+      </div>
+    </div>
+
+    <div class="child-card" onclick="showScreen('pin')">
+      <div class="child-avatar" style="background:linear-gradient(135deg,#2d1a4a,#0d0d2b);">🦸‍♀️</div>
+      <div class="child-info">
+        <div class="child-name">Sofia — Shadow Spark</div>
+        <div class="child-meta">Year 6 · Mathropolis · Rank: Bronze Hero</div>
+        <div style="margin-top:6px;">
+          <div class="progress-track" style="height:5px;">
+            <div class="progress-fill" style="width:35%;background:linear-gradient(90deg,#a855f7,#ef4444);"></div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="child-xp">⚡ 320 XP</div>
+        <div style="font-size:18px;margin-top:4px;">⭐</div>
+      </div>
+    </div>
+
+    <button class="add-child-btn" onclick="alert('Add child flow — coming soon!')">➕ Add another hero</button>
+
+    <div class="section-title">Recent Activity</div>
+    <div class="gap-col">
+      <div class="card" style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:22px;">⚡</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#f9fafb;">Alex completed Fraction Falls — Level 3</div>
+          <div style="font-size:11px;color:#6b7280;">Score: 9/10 · +45 XP · 2 hours ago</div>
+        </div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:22px;">🏆</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#f9fafb;">Sofia earned "First Perfect Score"</div>
+          <div style="font-size:11px;color:#6b7280;">Achievement unlocked · Yesterday</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 4: PIN LOGIN ===== -->
+  <div id="screen-pin" class="screen">
+    <div style="text-align:center;margin-bottom:8px;margin-top:10px;">
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Select your hero</div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:24px;">
+      <div onclick="selectHero(this,'🦸‍♂️','Bolt Runner')" style="cursor:pointer;text-align:center;padding:8px;border-radius:12px;border:2px solid #3b82f6;background:#0d1a3a;">
+        <div style="font-size:32px;">🦸‍♂️</div>
+        <div style="font-size:10px;color:#93c5fd;font-weight:700;margin-top:4px;">Bolt Runner</div>
+      </div>
+      <div onclick="selectHero(this,'🦸‍♀️','Shadow Spark')" style="cursor:pointer;text-align:center;padding:8px;border-radius:12px;border:2px solid #1e1e4a;">
+        <div style="font-size:32px;">🦸‍♀️</div>
+        <div style="font-size:10px;color:#6b7280;font-weight:700;margin-top:4px;">Shadow Spark</div>
+      </div>
+    </div>
+
+    <div class="pin-avatar" id="pin-avatar">🦸‍♂️</div>
+    <div class="pin-name" id="pin-hero-name">Bolt Runner</div>
+    <div style="font-size:13px;color:#6b7280;text-align:center;margin-top:4px;">Enter your secret PIN</div>
+
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+
+    <div class="pin-pad">
+      <div class="pin-key" onclick="pinPress(1)">1</div>
+      <div class="pin-key" onclick="pinPress(2)">2</div>
+      <div class="pin-key" onclick="pinPress(3)">3</div>
+      <div class="pin-key" onclick="pinPress(4)">4</div>
+      <div class="pin-key" onclick="pinPress(5)">5</div>
+      <div class="pin-key" onclick="pinPress(6)">6</div>
+      <div class="pin-key" onclick="pinPress(7)">7</div>
+      <div class="pin-key" onclick="pinPress(8)">8</div>
+      <div class="pin-key" onclick="pinPress(9)">9</div>
+      <div class="pin-key empty"></div>
+      <div class="pin-key" onclick="pinPress(0)">0</div>
+      <div class="pin-key del" onclick="pinDel()">⌫</div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 5: CITY MAP ===== -->
+  <div id="screen-citymap" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2>Maths City</h2>
+      <div style="display:flex;align-items:center;gap:6px;background:#12122a;border:1px solid #1e1e4a;border-radius:20px;padding:5px 12px;">
+        <span style="font-size:14px;">⚡</span>
+        <span style="font-size:14px;font-weight:700;color:#fbbf24;">840 XP</span>
+      </div>
+    </div>
+
+    <div class="city-map">
+      <div class="city-sky"></div>
+      <div class="city-moon"></div>
+      <!-- Stars -->
+      <div style="position:absolute;top:8px;left:30px;color:#fff;font-size:6px;opacity:0.5;">✦ ✦ ✦</div>
+      <div style="position:absolute;top:20px;left:80px;color:#fff;font-size:6px;opacity:0.4;">✦ ✦</div>
+      <div style="position:absolute;top:12px;right:60px;color:#fff;font-size:6px;opacity:0.5;">✦ ✦ ✦</div>
+
+      <!-- NUMBER TOWER (highlighted/active) -->
+      <div class="district-zone" style="left:12%;bottom:28px;" onclick="showScreen('district')">
+        <div class="dz-building">
+          <div class="dz-tower" style="width:8px;height:60px;background:#ef4444;box-shadow:0 0 12px #ef4444;"></div>
+          <div class="dz-tower" style="width:22px;height:100px;background:#ef4444;box-shadow:0 0 20px #ef4444;"></div>
+          <div class="dz-tower" style="width:8px;height:50px;background:#ef4444;box-shadow:0 0 12px #ef4444;"></div>
+        </div>
+        <div class="dz-label active-label">🔢 Number<br>Tower</div>
+      </div>
+
+      <!-- FRACTION FALLS -->
+      <div class="district-zone" style="left:30%;bottom:28px;" onclick="showScreen('district')">
+        <div class="dz-building">
+          <div class="dz-tower" style="width:18px;height:70px;background:#3b82f6;"></div>
+          <div class="dz-tower" style="width:12px;height:55px;background:#3b82f6;"></div>
+        </div>
+        <div class="dz-label">➗ Fraction<br>Falls</div>
+      </div>
+
+      <!-- SHAPE CITY (largest) -->
+      <div class="district-zone" style="left:50%;transform:translateX(-50%);bottom:28px;" onclick="showScreen('district')">
+        <div class="dz-building">
+          <div class="dz-tower" style="width:10px;height:80px;background:#a855f7;"></div>
+          <div class="dz-tower" style="width:28px;height:120px;background:#a855f7;box-shadow:0 0 10px #a855f740;"></div>
+          <div class="dz-tower" style="width:10px;height:65px;background:#a855f7;"></div>
+        </div>
+        <div class="dz-label">📐 Shape<br>City</div>
+      </div>
+
+      <!-- SEQUENCE BRIDGE -->
+      <div class="district-zone" style="right:28%;bottom:28px;" onclick="showScreen('district')">
+        <div class="dz-building">
+          <div class="dz-tower" style="width:24px;height:75px;background:#22c55e;"></div>
+          <div class="dz-tower" style="width:12px;height:50px;background:#22c55e;"></div>
+        </div>
+        <div class="dz-label">🔗 Sequence<br>Bridge</div>
+      </div>
+
+      <!-- PROBLEM PALACE -->
+      <div class="district-zone" style="right:8%;bottom:28px;" onclick="showScreen('district')">
+        <div class="dz-building">
+          <div class="dz-tower" style="width:10px;height:55px;background:#fbbf24;"></div>
+          <div class="dz-tower" style="width:28px;height:90px;background:#fbbf24;box-shadow:0 0 10px #fbbf2440;"></div>
+          <div class="dz-tower" style="width:10px;height:55px;background:#fbbf24;"></div>
+        </div>
+        <div class="dz-label">🧩 Problem<br>Palace</div>
+      </div>
+
+      <div class="city-road"><div class="road-line"></div></div>
+    </div>
+
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px;font-weight:600;">📍 Tap a district to explore missions</div>
+
+    <div class="zone-legend">
+      <div class="zone-pill" onclick="showScreen('district')"><div class="zone-dot" style="background:#ef4444;box-shadow:0 0 6px #ef4444;"></div><span class="zone-pill-name">🔢 Number Tower</span></div>
+      <div class="zone-pill" onclick="showScreen('district')"><div class="zone-dot" style="background:#3b82f6;"></div><span class="zone-pill-name">➗ Fraction Falls</span></div>
+      <div class="zone-pill" onclick="showScreen('district')"><div class="zone-dot" style="background:#a855f7;"></div><span class="zone-pill-name">📐 Shape City</span></div>
+      <div class="zone-pill" onclick="showScreen('district')"><div class="zone-dot" style="background:#22c55e;"></div><span class="zone-pill-name">🔗 Sequence Bridge</span></div>
+    </div>
+    <div class="zone-pill mt-8" onclick="showScreen('district')"><div class="zone-dot" style="background:#fbbf24;"></div><span class="zone-pill-name">🧩 Problem Palace</span></div>
+  </div>
+
+  <!-- ===== SCREEN 6: DISTRICT VIEW ===== -->
+  <div id="screen-district" class="screen">
+    <button onclick="showScreen('citymap')" style="background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;gap:4px;font-weight:600;">← Back to City</button>
+    <div class="district-header">
+      <div class="district-icon">🔢</div>
+      <div>
+        <div class="district-title">Number Tower</div>
+        <div class="district-subtitle">Core arithmetic · Place value · Mental maths</div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <span class="tag" style="background:#ef444420;color:#ef4444;">12 Missions</span>
+          <span class="tag" style="background:#22c55e20;color:#22c55e;">8 Complete</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-track mb-8">
+      <div class="progress-fill" style="width:67%;background:linear-gradient(90deg,#ef4444,#fbbf24);"></div>
+    </div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">8 of 12 missions complete · 67% mastery</div>
+
+    <div class="section-title">Missions</div>
+
+    <div class="mission-row" onclick="showScreen('mission')">
+      <div class="mission-icon-wrap" style="background:#ef444420;">🔢</div>
+      <div class="mission-info">
+        <div class="mission-name">Place Value Powerup</div>
+        <div class="mission-meta">10 questions · 8 min · +40 XP</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mission-stars">⭐⭐⭐</div>
+        <div style="font-size:10px;color:#22c55e;margin-top:2px;">Complete</div>
+      </div>
+    </div>
+
+    <div class="mission-row" onclick="showScreen('mission')">
+      <div class="mission-icon-wrap" style="background:#fbbf2420;">⚡</div>
+      <div class="mission-info">
+        <div class="mission-name">Mental Maths Blitz</div>
+        <div class="mission-meta">10 questions · 6 min · +45 XP</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mission-stars">⭐⭐☆</div>
+        <div style="font-size:10px;color:#fbbf24;margin-top:2px;">Retry for ⭐</div>
+      </div>
+    </div>
+
+    <div class="mission-row" onclick="showScreen('mission')">
+      <div class="mission-icon-wrap" style="background:#3b82f620;">➗</div>
+      <div class="mission-info">
+        <div class="mission-name">Fraction Frenzy</div>
+        <div class="mission-meta">10 questions · 8 min · +50 XP</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mission-stars" style="color:#fbbf24;">▶</div>
+        <div style="font-size:10px;color:#3b82f6;margin-top:2px;">In Progress</div>
+      </div>
+    </div>
+
+    <div class="mission-row" onclick="showScreen('mission')">
+      <div class="mission-icon-wrap" style="background:#a855f720;">🧮</div>
+      <div class="mission-info">
+        <div class="mission-name">Long Division Duel</div>
+        <div class="mission-meta">8 questions · 10 min · +55 XP</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mission-stars" style="color:#6b7280;">☆☆☆</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:2px;">Not started</div>
+      </div>
+    </div>
+
+    <div class="mission-row locked">
+      <div class="mission-icon-wrap" style="background:#1e1e4a;">🔒</div>
+      <div class="mission-info">
+        <div class="mission-name">Prime Number Patrol</div>
+        <div class="mission-meta">Complete 3 missions to unlock</div>
+      </div>
+      <div style="font-size:18px;color:#4b5563;">🔒</div>
+    </div>
+
+    <div class="mission-row locked">
+      <div class="mission-icon-wrap" style="background:#1e1e4a;">🔒</div>
+      <div class="mission-info">
+        <div class="mission-name">BOSS: Number Titan</div>
+        <div class="mission-meta">Complete all missions to unlock</div>
+      </div>
+      <div style="font-size:18px;color:#ef4444;">👹</div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 7: MISSION ===== -->
+  <div id="screen-mission" class="screen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button onclick="showScreen('district')" style="background:#1e1e4a;border:none;border-radius:8px;padding:6px 12px;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer;">✕ Quit</button>
+      <span style="font-size:13px;font-weight:700;color:#f9fafb;">Fraction Frenzy</span>
+      <div style="display:flex;align-items:center;gap:4px;background:#1e1e4a;border-radius:20px;padding:4px 10px;">
+        <span style="font-size:12px;">⚡</span>
+        <span style="font-size:13px;font-weight:700;color:#fbbf24;">840</span>
+      </div>
+    </div>
+
+    <div class="power-meter">
+      <div class="power-label">
+        <span style="color:#22c55e;">⏱ Time Power</span>
+        <span id="timer-label" style="color:#fbbf24;">45s</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill power-fill" id="timer-bar" style="width:75%;"></div>
+      </div>
+    </div>
+
+    <div class="q-counter">Question <span id="q-num">3</span> of 10</div>
+
+    <div class="question-card">
+      <div class="question-category">🔢 Fractions &amp; Ratios</div>
+      <div class="question-text">What is ¾ of 48?</div>
+      <div class="question-hint">Hint: find ¼ first, then multiply</div>
+    </div>
+
+    <div class="answer-grid" id="answer-grid">
+      <button class="answer-btn" onclick="selectAnswer(this, false)">32</button>
+      <button class="answer-btn" onclick="selectAnswer(this, true)">36</button>
+      <button class="answer-btn" onclick="selectAnswer(this, false)">40</button>
+      <button class="answer-btn" onclick="selectAnswer(this, false)">42</button>
+    </div>
+
+    <div class="mission-footer">
+      <div style="font-size:13px;color:#6b7280;">Score: <span style="color:#fbbf24;font-weight:700;">2 / 2</span></div>
+      <button class="btn btn-primary" style="width:auto;padding:10px 24px;" id="next-btn" onclick="nextQuestion()" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 8: MISSION COMPLETE ===== -->
+  <div id="screen-complete" class="screen">
+    <div class="complete-hero">
+      <div class="complete-emoji">🏆</div>
+      <div class="complete-title">Mission Complete!</div>
+      <div class="complete-subtitle">Fraction Frenzy · Number Tower</div>
+    </div>
+
+    <div class="card" style="text-align:center;margin-bottom:14px;">
+      <div class="label">Your Score</div>
+      <div class="score-display">8/10</div>
+      <div class="stars-large">
+        <span class="star-lit">⭐</span>
+        <span class="star-lit">⭐</span>
+        <span class="star-dim">⭐</span>
+      </div>
+      <div style="font-size:12px;color:#6b7280;">Score 90%+ to earn the third star</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="card" style="text-align:center;border-color:#22c55e40;">
+        <div class="xp-gained">+40</div>
+        <div class="xp-label">XP Gained</div>
+      </div>
+      <div class="card" style="text-align:center;border-color:#fbbf2440;">
+        <div style="font-size:28px;font-weight:900;color:#fbbf24;">+12</div>
+        <div class="xp-label">Accuracy Bonus</div>
+      </div>
+    </div>
+
+    <div class="card rank-section">
+      <div class="rank-row">
+        <span class="rank-name">⚡ Silver Cadet</span>
+        <span class="rank-xp">840 / 1000 XP</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:84%;background:linear-gradient(90deg,#3b82f6,#a855f7);"></div>
+      </div>
+      <div style="font-size:12px;color:#6b7280;margin-top:8px;">160 XP until <span style="color:#a855f7;font-weight:700;">Gold Hero</span> 🚀</div>
+    </div>
+
+    <div class="card mt-12" style="border-color:#fbbf2440;">
+      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px;">📊 This Mission</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#9ca3af;margin-bottom:4px;">
+        <span>✅ Correct</span><span style="color:#22c55e;font-weight:700;">8</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#9ca3af;margin-bottom:4px;">
+        <span>❌ Wrong</span><span style="color:#ef4444;font-weight:700;">2</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:#9ca3af;">
+        <span>⏱ Avg. time/question</span><span style="color:#fbbf24;font-weight:700;">28s</span>
+      </div>
+    </div>
+
+    <div class="complete-actions">
+      <button class="btn btn-ghost" style="flex:1;" onclick="showScreen('district')">📋 Results</button>
+      <button class="btn btn-success" style="flex:2;" onclick="showScreen('mission')">▶ Next Mission</button>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN 9: HERO PROFILE ===== -->
+  <div id="screen-profile" class="screen">
+    <div class="profile-hero">
+      <div class="profile-avatar">🦸‍♂️</div>
+      <div class="profile-name">Bolt Runner</div>
+      <div class="rank-badge">⚡ Silver Cadet</div>
+    </div>
+
+    <div class="xp-section">
+      <div class="xp-row">
+        <span class="xp-total">⚡ 840 XP Total</span>
+        <span class="xp-next">Next: Gold Hero @ 1000 XP</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:84%;background:linear-gradient(90deg,#3b82f6,#a855f7);"></div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">⚔️</div>
+        <div class="stat-val">28</div>
+        <div class="stat-lbl">Missions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-val">78%</div>
+        <div class="stat-lbl">Accuracy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-val">5</div>
+        <div class="stat-lbl">Day Streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-val">42</div>
+        <div class="stat-lbl">Stars</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-val">4</div>
+        <div class="stat-lbl">Trophies</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱</div>
+        <div class="stat-val">6h</div>
+        <div class="stat-lbl">Played</div>
+      </div>
+    </div>
+
+    <div class="section-title">Achievement Badges</div>
+    <div class="badges-grid">
+      <div class="badge-item">
+        <div class="badge-emoji">🚀</div>
+        <div class="badge-name">First Mission</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-emoji">🎯</div>
+        <div class="badge-name">Perfect 10</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-emoji">🔥</div>
+        <div class="badge-name">5-Day Streak</div>
+      </div>
+      <div class="badge-item">
+        <div class="badge-emoji">⚡</div>
+        <div class="badge-name">Speed Demon</div>
+      </div>
+      <div class="badge-item locked">
+        <div class="badge-emoji">🏰</div>
+        <div class="badge-name">District Master</div>
+      </div>
+      <div class="badge-item locked">
+        <div class="badge-emoji">👑</div>
+        <div class="badge-name">Gold Hero</div>
+      </div>
+      <div class="badge-item locked">
+        <div class="badge-emoji">🌟</div>
+        <div class="badge-name">Top 10%</div>
+      </div>
+      <div class="badge-item locked">
+        <div class="badge-emoji">🧙</div>
+        <div class="badge-name">All Mastered</div>
+      </div>
+    </div>
+
+    <div class="section-title">Topic Mastery</div>
+    <div class="gap-col" style="margin-bottom:8px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:600;color:#f9fafb;">🔢 Number &amp; Arithmetic</span>
+          <span style="font-size:12px;color:#ef4444;font-weight:700;">82%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:82%;background:#ef4444;"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:600;color:#f9fafb;">➗ Fractions &amp; Ratio</span>
+          <span style="font-size:12px;color:#3b82f6;font-weight:700;">65%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:65%;background:#3b82f6;"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:600;color:#f9fafb;">📐 Shape &amp; Geometry</span>
+          <span style="font-size:12px;color:#a855f7;font-weight:700;">74%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:74%;background:#a855f7;"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:600;color:#f9fafb;">🔗 Sequences &amp; Patterns</span>
+          <span style="font-size:12px;color:#22c55e;font-weight:700;">58%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:58%;background:#22c55e;"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:600;color:#f9fafb;">🧩 Word Problems</span>
+          <span style="font-size:12px;color:#fbbf24;font-weight:700;">49%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:49%;background:#fbbf24;"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+  // Screen navigation
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    const tabs = document.querySelectorAll('.tab-btn');
+    const map = ['landing','auth','dashboard','pin','citymap','district','mission','complete','profile'];
+    const idx = map.indexOf(id);
+    if (idx >= 0) tabs[idx].classList.add('active');
+    // scroll tab into view
+    if (idx >= 0) tabs[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+
+  // Auth toggle
+  function switchAuth(mode) {
+    document.getElementById('login-tab').classList.toggle('active', mode === 'login');
+    document.getElementById('signup-tab').classList.toggle('active', mode === 'signup');
+    document.getElementById('login-form').style.display = mode === 'login' ? '' : 'none';
+    document.getElementById('signup-form').style.display = mode === 'signup' ? '' : 'none';
+  }
+
+  // PIN pad
+  let pin = [];
+  function pinPress(n) {
+    if (pin.length >= 4) return;
+    pin.push(n);
+    updateDots();
+    if (pin.length === 4) setTimeout(() => { pin = []; updateDots(); showScreen('citymap'); }, 400);
+  }
+  function pinDel() { if (pin.length) { pin.pop(); updateDots(); } }
+  function updateDots() {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('d' + i).classList.toggle('filled', i < pin.length);
+    }
+  }
+  function selectHero(el, emoji, name) {
+    document.querySelectorAll('#screen-pin [onclick^="selectHero"]').forEach(e => {
+      e.style.borderColor = '#1e1e4a';
+      e.querySelector('div:last-child').style.color = '#6b7280';
+    });
+    el.style.borderColor = '#3b82f6';
+    el.querySelector('div:last-child').style.color = '#93c5fd';
+    document.getElementById('pin-avatar').textContent = emoji;
+    document.getElementById('pin-hero-name').textContent = name;
+    pin = []; updateDots();
+  }
+
+  // Mission answer selection
+  function selectAnswer(btn, isCorrect) {
+    const grid = document.getElementById('answer-grid');
+    const btns = grid.querySelectorAll('.answer-btn');
+    btns.forEach(b => b.classList.remove('selected', 'correct', 'wrong'));
+    btn.classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect) {
+      btns.forEach(b => {
+        if (b.textContent.trim() === '36') b.classList.add('correct');
+      });
+    }
+    document.getElementById('next-btn').disabled = false;
+  }
+
+  function nextQuestion() {
+    const qNum = document.getElementById('q-num');
+    const curr = parseInt(qNum.textContent);
+    if (curr < 10) {
+      qNum.textContent = curr + 1;
+      const grid = document.getElementById('answer-grid');
+      grid.querySelectorAll('.answer-btn').forEach(b => b.classList.remove('selected','correct','wrong'));
+      document.getElementById('next-btn').disabled = true;
+    } else {
+      showScreen('complete');
+    }
+  }
+
+  // Animate timer bar
+  let timerWidth = 75;
+  let timerDir = -1;
+  setInterval(() => {
+    const bar = document.getElementById('timer-bar');
+    if (!bar) return;
+    timerWidth += timerDir * 0.5;
+    if (timerWidth <= 10) timerDir = 1;
+    if (timerWidth >= 100) timerDir = -1;
+    bar.style.width = timerWidth + '%';
+    const secs = Math.round(timerWidth * 60 / 100);
+    const lbl = document.getElementById('timer-label');
+    if (lbl) lbl.textContent = secs + 's';
+  }, 200);
+</script>
+</body>
+</html>

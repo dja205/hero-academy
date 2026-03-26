@@ -1,0 +1,2154 @@
+{
+  "request_summary": "Decompose Hero Academy MVP system map into capability-level child issues for BC-01 (Auth), BC-02 (Child Portal), BC-03 (Parent Portal), BC-04 (Assessment Engine), BC-05 (Gamification), BC-06 (Admin Portal), and CC-01 (Infrastructure). 4-8 child slices per context. MVP scope: React + TS SPA, Node/Express API, SQLite, JWT auth.",
+  "decomposition_level": "domain_capabilities",
+  "items": [
+    {
+      "id": "BC-01-C1",
+      "title": "Parent registration and email verification flow",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "A parent can register with email and password, receive a verification email, and confirm their account before being able to log in.",
+      "scope": [
+        "POST /api/v1/auth/parent/register: validate email format and password strength",
+        "Generate verification token (JWT, 24h expiry)",
+        "Send verification email with token link",
+        "POST /api/v1/auth/parent/verify: confirm token and mark account as verified",
+        "Store parent record with hashed password (bcrypt) and verified flag",
+        "Prevent login until verified (if OQ-3 decides verification is blocking)"
+      ],
+      "non_goals": [
+        "Email resend logic (defer if low priority)",
+        "OAuth or social login",
+        "Admin override of verification"
+      ],
+      "acceptance_criteria": [
+        "POST /register accepts valid email/password, generates verification token, sends email",
+        "POST /verify with valid token marks account verified and allows login",
+        "POST /verify with expired/invalid token returns 400",
+        "Duplicate email registration returns 409 Conflict",
+        "Password validation enforces minimum length (12 chars recommended) and complexity"
+      ],
+      "dependencies": [],
+      "labels": ["auth", "parent", "backend", "security"],
+      "assumptions": [
+        "Email verification is synchronous (OQ-3 must decide blocking vs non-blocking; assume blocking for MVP security posture)",
+        "Email service is available (nodemailer or SendGrid stub)",
+        "bcrypt cost factor set to 12 for reasonable security/performance balance"
+      ],
+      "split_rationale": "Parent registration has distinct API contract and token lifecycle; separating from login/password reset allows focused testing and credential rotation.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Clear API boundary; email service integration is straightforward; no cross-cutting complexity"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C2",
+      "title": "Parent login, logout, and password recovery",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "A verified parent can log in with email and password, receive access and refresh tokens, log out securely, and reset a forgotten password.",
+      "scope": [
+        "POST /api/v1/auth/parent/login: validate credentials, issue JWT access token (15 min) and refresh token (7 day HttpOnly cookie, rotated on use)",
+        "POST /api/v1/auth/parent/logout: revoke refresh token in DB, clear HttpOnly cookie",
+        "POST /api/v1/auth/parent/refresh: validate refresh token, issue new access/refresh pair, mark old token as spent",
+        "POST /api/v1/auth/parent/forgot-password: send reset link with one-time token (24h expiry)",
+        "POST /api/v1/auth/parent/reset-password: validate token, update password, invalidate all existing refresh tokens for account",
+        "Refresh token revocation list stored in DB (tokens table with revoked_at timestamp)"
+      ],
+      "non_goals": [
+        "Two-factor authentication",
+        "Account lockout after failed attempts (separate rate-limit concern)",
+        "Session-based state"
+      ],
+      "acceptance_criteria": [
+        "POST /login with valid credentials returns access token in body and refresh token in HttpOnly cookie",
+        "POST /login with invalid credentials returns 401 Unauthorized",
+        "POST /refresh with valid refresh token returns new access/refresh pair and revokes old refresh token",
+        "POST /logout invalidates refresh token in DB and clears cookie",
+        "POST /forgot-password sends reset email with valid token",
+        "POST /reset-password with valid token updates password and revokes all refresh tokens"
+      ],
+      "dependencies": ["BC-01-C1"],
+      "labels": ["auth", "parent", "backend", "security"],
+      "assumptions": [
+        "Refresh tokens are short-lived HttpOnly cookies (rotated on every access token refresh)",
+        "Password reset flow does not re-verify email (one-time token is sufficient)",
+        "Refresh token revocation is checked in middleware before accessing protected resources"
+      ],
+      "split_rationale": "Login and session management are distinct from registration; separating allows focused testing of token rotation and revocation mechanics.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Token lifecycle is well-defined; revocation logic is straightforward; no frontend complexity"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C3",
+      "title": "Child PIN authentication and avatar selection",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "A child can enter a 4-digit PIN and select an avatar, receive a short-lived JWT in memory, and be logged in without exposing the PIN to localStorage.",
+      "scope": [
+        "POST /api/v1/auth/child/login: validate PIN (4 digits), return JWT access token (15 min, no refresh token)",
+        "Child JWT claim: { child_id, parent_id, hero_name, avatar_id } — no email, no PII",
+        "PIN rate-limiting: 5 failed attempts per child per 10 minutes (IP + child_id)",
+        "Return JWT response with explicit instruction to store in memory only (no localStorage)",
+        "Avatar selection UI: display 6-8 avatar options from config (OQ-5 schema must be specified)",
+        "Client-side: store JWT in closure/memory variable, not localStorage or sessionStorage"
+      ],
+      "non_goals": [
+        "Parent approval workflow for child login",
+        "Child account creation (owned by Parent Portal BC-03)",
+        "Social login or biometric auth"
+      ],
+      "acceptance_criteria": [
+        "POST /login accepts valid 4-digit PIN and returns JWT access token with 15 min expiry",
+        "POST /login with invalid PIN increments attempt counter",
+        "After 5 failed attempts within 10 min, subsequent attempts are rate-limited (429 Too Many Requests)",
+        "Child JWT payload excludes email, surname, or other PII",
+        "JWT includes parent_id for subscription gating lookups",
+        "Avatar selection renders available avatars from configuration"
+      ],
+      "dependencies": [],
+      "labels": ["auth", "child", "backend", "frontend", "security"],
+      "assumptions": [
+        "Avatar configuration is a JSON file (path and dimensions TBD in OQ-5)",
+        "PIN is stored as bcrypt hash in the child record",
+        "Rate-limiting is keyed by child_id and request source IP",
+        "Child JWT is intentionally short-lived (15 min) and carries no refresh token to reduce exposure"
+      ],
+      "split_rationale": "Child auth is fundamentally different from parent auth (no email, no refresh token, in-memory JWT); separating it preserves the distinct security model.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Simpler than parent auth (no email verification, no refresh); rate-limiting is a known pattern"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C4",
+      "title": "Admin login and role authorization",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "An admin can log in with email and password and receive an access token with the admin role claim; all admin routes are guarded by role middleware.",
+      "scope": [
+        "POST /api/v1/auth/admin/login: validate admin email and password, issue JWT access token (15 min) with role: 'admin'",
+        "Admin records seeded in DB via seed script (OQ-8 — no invite flow for MVP)",
+        "Admin JWT claim: { admin_id, email, role: 'admin' }",
+        "Middleware requireRole('admin'): validates JWT and checks role claim before passing to route handler",
+        "Apply middleware to all /api/v1/admin/* routes",
+        "No HttpOnly refresh token for admin (access-token-only for MVP simplicity)"
+      ],
+      "non_goals": [
+        "Admin account creation UI or invite workflow (OQ-8 — scope TBD)",
+        "Two-factor authentication",
+        "Audit logging of admin actions (deferred)"
+      ],
+      "acceptance_criteria": [
+        "POST /login accepts admin email/password and returns JWT with admin role",
+        "POST /login with invalid credentials returns 401",
+        "Requests to /api/v1/admin/* without valid admin JWT return 401 or 403",
+        "requireRole('admin') middleware correctly validates role claim",
+        "Admin logout is stateless (no token revocation needed for MVP)"
+      ],
+      "dependencies": [],
+      "labels": ["auth", "admin", "backend", "security"],
+      "assumptions": [
+        "Admin accounts are seeded via script only; no self-signup or invite flow in MVP (OQ-8)",
+        "Admin role is checked only on route entry; no nested role escalation needed",
+        "Admin JWT is short-lived (15 min) and access-token-only for simplicity"
+      ],
+      "split_rationale": "Admin auth is simpler than parent (no refresh token, no verification) and warrants its own capability for clarity and focused testing.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward email/password flow; role middleware is a standard pattern; no token refresh complexity"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C5",
+      "title": "JWT token generation, validation, and middleware",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "The system can issue, sign, and validate JWTs consistently across all auth flows; middleware enforces role-based access on protected routes.",
+      "scope": [
+        "JWT signing: HS256 algorithm, RS256 if key rotation is required post-MVP",
+        "Token claims structure: { sub, iat, exp, role, [parent_id], [child_id], [admin_id] }",
+        "Middleware verifyToken(): extract Bearer token from Authorization header, validate signature and expiry",
+        "Middleware requireAuth(): apply verifyToken() and return 401 if invalid",
+        "Middleware requireRole(role): apply verifyToken() and check role claim; return 403 if role mismatch",
+        "Error responses: 401 Unauthorized (missing/invalid token), 403 Forbidden (insufficient role)"
+      ],
+      "non_goals": [
+        "Key rotation (can be added post-MVP if using RS256)",
+        "Token introspection endpoint",
+        "Separate session store"
+      ],
+      "acceptance_criteria": [
+        "Issued JWT is valid and verifiable by middleware",
+        "JWT signature validation fails if secret is incorrect",
+        "Expired JWT returns 401",
+        "verifyToken() correctly extracts claims",
+        "requireAuth() blocks unauthenticated requests with 401",
+        "requireRole() blocks requests from wrong role with 403"
+      ],
+      "dependencies": [],
+      "labels": ["auth", "backend", "security", "middleware"],
+      "assumptions": [
+        "JWT secret is stored in environment variable (12.random() or similar, not hardcoded)",
+        "HS256 is sufficient for single-server deployment; RS256 can be added if multi-server auth is needed post-MVP",
+        "Token expiry is enforced by middleware, not client-side"
+      ],
+      "split_rationale": "JWT infrastructure is used by all three auth flows (parent, child, admin); separating it ensures consistent issuance/validation and reduces duplication.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Clear token structure; middleware is a standard Express pattern; no novel crypto logic"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C6",
+      "title": "Refresh token generation, rotation, and HttpOnly cookie handling",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "Parent refresh tokens are issued in HttpOnly cookies, rotated on each access token refresh, and revoked on logout or account suspension.",
+      "scope": [
+        "Refresh token generation: longer JWT (7 day expiry) stored in HttpOnly, Secure, SameSite=Strict cookie",
+        "POST /api/v1/auth/parent/refresh: validate cookie-based refresh token, issue new access token + new refresh token (rotation), revoke old refresh token",
+        "Refresh token revocation: mark old token in revocation list with timestamp; revoked tokens fail validation",
+        "Revocation check in middleware: verifyToken() queries DB for revoked tokens before accepting",
+        "Cookie naming: __refreshToken (prevents accidental JS access)",
+        "Secure flag ensures cookie is sent only over HTTPS in production"
+      ],
+      "non_goals": [
+        "Multiple refresh tokens per account (one valid at a time)",
+        "Refresh token reuse detection beyond standard rotation",
+        "Cross-origin refresh flows (single-server only)"
+      ],
+      "acceptance_criteria": [
+        "Refresh token is issued in HttpOnly cookie with Secure and SameSite flags",
+        "POST /refresh issues new access token and new refresh token, invalidates old token",
+        "POST /refresh with revoked refresh token returns 401",
+        "Revocation check prevents replay of old tokens",
+        "Cookie is sent by browser automatically; response sets new cookie",
+        "HttpOnly flag prevents JS access to token"
+      ],
+      "dependencies": ["BC-01-C5"],
+      "labels": ["auth", "parent", "backend", "security"],
+      "assumptions": [
+        "Single valid refresh token per parent account at any time (rotation, not accumulation)",
+        "Revocation list is queried on every refresh request (acceptable for MVP scale)",
+        "HTTPS is enforced in production; Secure flag will be set conditionally"
+      ],
+      "split_rationale": "Refresh token rotation and revocation are distinct from JWT issuance and from password reset; separating clarifies the token lifecycle.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard OAuth refresh token pattern; HttpOnly cookie handling is well-understood"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C7",
+      "title": "PIN attempt rate-limiting and brute-force protection",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "Child PIN login is protected from brute-force attacks by enforcing a 5-attempt limit per 10-minute window per child.",
+      "scope": [
+        "Rate-limit key: (child_id, request_source_IP) composite",
+        "Limit: 5 failed attempts per 10 minutes",
+        "On 6th attempt within window: return 429 Too Many Requests with Retry-After header",
+        "Store attempt count in memory cache (Redis optional for MVP; in-memory is acceptable for single server)",
+        "Reset counter on successful login or after 10-minute window expires",
+        "Log rate-limit events for monitoring (optional: feed to admin dashboard later)"
+      ],
+      "non_goals": [
+        "Account lockout (rate-limit is temporary, not permanent)",
+        "Distributed rate-limiting across multiple servers",
+        "Captcha or challenge-response (defer if needed)"
+      ],
+      "acceptance_criteria": [
+        "5 failed PIN attempts within 10 min are accepted",
+        "6th failed attempt within 10 min returns 429 Too Many Requests",
+        "Retry-After header indicates seconds until next attempt allowed",
+        "Successful login resets attempt counter",
+        "Counter expires after 10 minutes of no activity",
+        "Rate-limit is keyed per child + per IP"
+      ],
+      "dependencies": [],
+      "labels": ["auth", "child", "backend", "security"],
+      "assumptions": [
+        "In-memory rate-limit state is acceptable for single-server MVP (no cross-server coordination needed)",
+        "Child PIN is short (4 digits); 5 attempts is a reasonable threshold before lockout",
+        "IP-based tracking is a reasonable proxy for preventing mass attacks from single source"
+      ],
+      "split_rationale": "Rate-limiting is a security concern orthogonal to PIN validation; separating allows focused testing and potential migration to Redis later.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward counter logic; can use in-memory cache for MVP scale"
+        ]
+      }
+    },
+    {
+      "id": "BC-01-C8",
+      "title": "Role-based access control middleware and route protection",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-01",
+      "outcome": "All protected routes enforce role-based access control; parent-only, child-only, and admin-only endpoints return 403 if the wrong role attempts access.",
+      "scope": [
+        "Middleware stack: verifyToken() → requireRole() → route handler",
+        "Role constants: ROLE.PARENT, ROLE.CHILD, ROLE.ADMIN",
+        "requireRole(expectedRole) middleware: checks JWT role claim, returns 403 if mismatch",
+        "Guard all /api/v1/parent/* routes with requireRole('parent')",
+        "Guard all /api/v1/child/* routes with requireRole('child')",
+        "Guard all /api/v1/admin/* routes with requireRole('admin')",
+        "Error responses include WWW-Authenticate header for HTTP spec compliance"
+      ],
+      "non_goals": [
+        "Fine-grained resource ownership checks (e.g., parent can only view own children)",
+        "Attribute-based access control (ABAC)",
+        "Dynamic role assignment"
+      ],
+      "acceptance_criteria": [
+        "Child JWT attempting parent route returns 403 Forbidden",
+        "Parent JWT attempting admin route returns 403 Forbidden",
+        "Middleware is applied consistently to all role-specific routes",
+        "Unauthenticated request to protected route returns 401, not 403",
+        "Error response includes WWW-Authenticate header"
+      ],
+      "dependencies": ["BC-01-C5"],
+      "labels": ["auth", "backend", "security", "middleware"],
+      "assumptions": [
+        "Role-based access control (RBAC) is sufficient for MVP; no attribute-based or resource-level permissions",
+        "Each request has exactly one role (no multi-role users in MVP)"
+      ],
+      "split_rationale": "Role-based access control is a separate concern from token validation; separating allows focused testing of authorization logic.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward middleware pattern; RBAC is well-established"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C1",
+      "title": "Child login UI: PIN entry and avatar selection",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "A child can enter a 4-digit PIN using numeric keypad (mobile-friendly), select an avatar from a displayed gallery, and log in to access the child portal.",
+      "scope": [
+        "PIN input screen: numeric keypad with visual feedback (4 circles, masked entry)",
+        "PIN submission: POST to /api/v1/auth/child/login, handle 429 rate-limit response, display 'Too many attempts' message",
+        "Avatar selection screen: display 6-8 avatars with names, allow selection before or after PIN entry (design decision)",
+        "Error handling: display 'Invalid PIN' message on 401, respect rate-limit backoff",
+        "Store JWT in memory variable (not localStorage); expose JWT to outgoing requests via interceptor",
+        "Touch targets ≥ 44px; font ≥ 18px for young children",
+        "Mobile-first: 375px+ viewport support, no horizontal scroll"
+      ],
+      "non_goals": [
+        "Parent approval workflow",
+        "Child account creation (owned by Parent Portal)",
+        "Biometric or QR-code auth"
+      ],
+      "acceptance_criteria": [
+        "Numeric keypad accepts PIN input and visually masks entry",
+        "PIN submission calls API and displays result",
+        "Rate-limit 429 response triggers backoff message (try again in X seconds)",
+        "Avatar gallery renders 6-8 selectable avatars with labels",
+        "JWT is stored in memory (verify in DevTools that localStorage is not used)",
+        "Touch targets are ≥ 44px; font is readable on mobile",
+        "No horizontal scroll on 375px viewport"
+      ],
+      "dependencies": ["BC-01-C3"],
+      "labels": ["child-portal", "frontend", "auth", "mobile-first"],
+      "assumptions": [
+        "Avatar config JSON is available at build time (OQ-5 schema must be specified)",
+        "Numeric keypad is custom React component or mobile browser native input type=tel",
+        "Young children (8-10) need larger touch targets and clearer visual feedback than typical adult apps"
+      ],
+      "split_rationale": "Child login UI is distinct from the mission runner and profile UI; separating allows focused development and testing of the onboarding flow.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Frontend-only; clear API boundary; standard form+gallery patterns"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C2",
+      "title": "City map and zone navigation",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "The child can view a stylized city map of Mathropolis with zone/district unlocking rules applied, navigate between unlocked and locked zones, and see unlocking progress.",
+      "scope": [
+        "Fetch city map config and child progress from API: GET /api/v1/child/progress",
+        "Render Mathropolis city with 5 districts, apply visual unlock states based on XP thresholds (e.g., 'locked', 'unlocked', 'completing')",
+        "Click/tap zone → navigate to district view",
+        "Locked zone shows unlock requirement (e.g., '50 XP to unlock') with progress bar",
+        "Zoom and pan interaction (Framer Motion or Konva for canvas)",
+        "Fly-in animation on city load (Framer Motion)",
+        "Mobile: swipe to pan, pinch to zoom (optional, or static view)",
+        "Responsive: full-screen map on mobile, side-by-side on tablet"
+      ],
+      "non_goals": [
+        "Procedural or dynamic map generation",
+        "Leaderboard or player position overlays",
+        "3D or isometric rendering"
+      ],
+      "acceptance_criteria": [
+        "Fetch child progress updates map unlock state",
+        "Locked zone displays unlock requirement and progress bar",
+        "Click zone navigates to district view (routing)",
+        "Map is interactive: zoom, pan, or tap to select",
+        "Fly-in animation plays on initial load",
+        "Responsive on 375px and 768px viewports",
+        "No horizontal scroll on mobile"
+      ],
+      "dependencies": ["BC-02-C1", "BC-05"],
+      "labels": ["child-portal", "frontend", "mobile-first"],
+      "assumptions": [
+        "City map is a fixed 2D layout (no procedural generation)",
+        "Unlock thresholds are based on XP milestones (exact thresholds TBD)",
+        "Framer Motion is available for animations"
+      ],
+      "split_rationale": "City map navigation is a distinct UX layer from mission execution; separating allows independent animation and interaction testing.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": [
+          "Requires animation layer (Framer Motion) and interactive map rendering, but well-scoped to navigation and unlock display"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C3",
+      "title": "District view and mission selection",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "After selecting a district, the child can view 3 available missions with difficulty and completion status, and select a mission to start.",
+      "scope": [
+        "Fetch district details from API: GET /api/v1/child/district/:id",
+        "Render district name, flavor text, and mission list",
+        "Each mission card shows: title, difficulty (1-3 stars), completion status (not started / in progress / completed)",
+        "Show average score on completed missions (or similar progress indicator)",
+        "Click mission → navigate to mission runner",
+        "Back button returns to city map",
+        "Difficulty stars are visual; no gameplay impact in MVP"
+      ],
+      "non_goals": [
+        "Mission prerequisites or blocking (all missions in a district are available)",
+        "Leaderboard or comparison with peers",
+        "Video or audio instructions per mission"
+      ],
+      "acceptance_criteria": [
+        "Fetch district returns mission list with status and difficulty",
+        "Mission cards render title, difficulty stars, and completion status",
+        "Click mission navigates to mission runner with mission ID",
+        "Back button navigates to city map",
+        "Responsive on mobile and tablet",
+        "No horizontal scroll"
+      ],
+      "dependencies": ["BC-02-C2", "BC-04"],
+      "labels": ["child-portal", "frontend", "mobile-first"],
+      "assumptions": [
+        "All missions in a district are unlocked once the district is unlocked (no individual mission prerequisites)",
+        "Difficulty and status are read-only attributes; no editing needed",
+        "Each district has exactly 3 missions (MVP scope: Mathropolis only)"
+      ],
+      "split_rationale": "District and mission selection are a distinct navigation layer; separating from mission execution allows focused testing of the selection UI.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Simple list and card rendering; standard routing patterns"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C4",
+      "title": "Mission runner: question rendering and answer capture",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "The child can view a question with 4 multiple-choice answers, select an answer, and submit their attempt.",
+      "scope": [
+        "Fetch mission questions from API: GET /api/v1/child/mission/:id/attempt (returns ordered question set, attempt UUID)",
+        "Render question stem and 4 answer options as tappable buttons (44px+ height)",
+        "Visual feedback on selection (highlight, color change)",
+        "Submit button to lock in answer and move to next question",
+        "Question counter (e.g., '1 of 10')",
+        "Back/quit option (warn before abandoning attempt)",
+        "Store attempt UUID and answers in client state",
+        "Mobile-first: full-width buttons, large font (18px+)"
+      ],
+      "non_goals": [
+        "Scoring or feedback (owned by BC-02-C5)",
+        "Timer (no time limit in MVP)",
+        "Question branching or adaptive difficulty",
+        "Audio or video question content"
+      ],
+      "acceptance_criteria": [
+        "Fetch mission returns 10 questions and unique attempt UUID",
+        "Questions render with stem and 4 answer options",
+        "Answer buttons are ≥ 44px height and respond to tap",
+        "Selected answer is visually highlighted",
+        "Submit button advances to next question",
+        "Question counter displays current position (e.g., '3 of 10')",
+        "Back button prompts user before abandoning",
+        "Attempt UUID and answers are stored in client state"
+      ],
+      "dependencies": ["BC-04", "BC-02-C3"],
+      "labels": ["child-portal", "frontend", "mission", "mobile-first"],
+      "assumptions": [
+        "10 questions per mission (MVP scope)",
+        "Multiple-choice only (no essay or numeric answers in MVP)",
+        "No time limit per question or mission",
+        "Randomization of answer option order is TBD (OQ-6)"
+      ],
+      "split_rationale": "Question rendering and answer capture are distinct from submission and feedback; separating allows independent testing of the UI and state management.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward form rendering; standard state management for answer tracking"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C5",
+      "title": "Mission submission and feedback UI with animations",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "After answering all 10 questions, the child can submit their attempt, see animated feedback (correct/incorrect per question), and view their score and XP earned.",
+      "scope": [
+        "Submit attempt: POST /api/v1/child/attempt with attempt UUID and answers",
+        "Receive scored response: { stars: 1-3, xp_earned, feedback: { question_id, correct_answer, is_correct } }",
+        "Animation sequence: submit button → loading spinner → reveal correct/incorrect per question → score reveal → XP popup",
+        "Correct answer: green checkmark + brief positive message",
+        "Incorrect answer: red X + show correct answer",
+        "Final score screen: stars (1-3), XP earned, total missions completed, streak bonus (if applicable)",
+        "Next button: return to district view or mission selection",
+        "Use Framer Motion for all animations (stagger, scale, fade)"
+      ],
+      "non_goals": [
+        "Sound effects (defer if time permits)",
+        "Social sharing of scores",
+        "Detailed explanations of why answers are correct"
+      ],
+      "acceptance_criteria": [
+        "POST /attempt with answers returns scored response",
+        "Animation sequence plays for all 10 questions with visual feedback (correct/incorrect)",
+        "Stars and XP earned are displayed prominently",
+        "Streak bonus is shown if applicable (depends on BC-05 completion)",
+        "Next button returns to district view",
+        "Framer Motion animations are smooth and not jarring",
+        "Mobile: animations scale appropriately for 375px viewport"
+      ],
+      "dependencies": ["BC-02-C4", "BC-04", "BC-05"],
+      "labels": ["child-portal", "frontend", "mission", "gamification"],
+      "assumptions": [
+        "Scoring is handled by Assessment Engine (BC-04); UI receives stars and XP",
+        "Animations are core to engagement for this age group (8-10 year olds)",
+        "Framer Motion stagger and scale animations are used for visual interest"
+      ],
+      "split_rationale": "Feedback and animations are distinct from question capture; separating allows focused testing of the result UX and animation performance.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": [
+          "Animation layer adds complexity, but well-scoped to feedback reveal sequence"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C6",
+      "title": "Hero profile display: avatar, stats, and achievements",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "The child can view their hero profile with avatar, current XP and rank, missions completed, streaks, and earned achievements.",
+      "scope": [
+        "Fetch child stats from API: GET /api/v1/child/profile",
+        "Render hero profile card: avatar, hero name, rank badge, XP bar (visual progress to next rank)",
+        "Stats summary: missions completed, average score, current streak, strongest/weakest district",
+        "Achievements/badges section: display earned badges with names and unlock dates",
+        "Visual polish: gradients, hero theme styling, rank-specific colors",
+        "Mobile-first: full-width cards, large readable text",
+        "Back button returns to mission selection or city map"
+      ],
+      "non_goals": [
+        "Leaderboard or peer comparison",
+        "Achievement unlock notifications (defer to post-MVP)",
+        "Customizable profile (name change, etc.)"
+      ],
+      "acceptance_criteria": [
+        "Fetch profile returns all hero stats and achievements",
+        "Profile card renders avatar, name, rank badge, and XP bar",
+        "XP bar visually represents progress to next rank",
+        "Stats are displayed: missions, average score, streak, strongest/weakest",
+        "Achievements are displayed with names and dates",
+        "Mobile: no horizontal scroll, readable font sizes",
+        "Visual polish matches superhero theme"
+      ],
+      "dependencies": ["BC-05"],
+      "labels": ["child-portal", "frontend", "profile"],
+      "assumptions": [
+        "Hero stats are computed by Gamification service (BC-05) and exposed via API",
+        "Achievements are badge objects with names, descriptions, and unlock dates",
+        "Rank badge styling is theme-consistent (colors, icons)"
+      ],
+      "split_rationale": "Profile display is a distinct view from the mission runner; separating allows independent styling and stat presentation.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Static display of data; standard card and stat rendering"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C7",
+      "title": "Client-side authentication state and session management",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "The child's JWT is stored securely in memory, included in all API requests, and the session is automatically logged out after 2 hours of inactivity.",
+      "scope": [
+        "JWT storage: in-memory variable (closure or Context API), not localStorage or sessionStorage",
+        "API interceptor: inject JWT into Authorization: Bearer header for all /api/v1/child/* requests",
+        "Idle timer: reset on every user interaction (tap, keystroke, scroll); log out after 2 hours (7200s) of inactivity",
+        "Log out: clear JWT from memory, remove any auth headers, redirect to child login screen",
+        "Handle 401 responses: refresh token flow (not applicable for child JWT, so log out immediately)",
+        "Error boundary: catch auth-related API errors and display appropriate user message"
+      ],
+      "non_goals": [
+        "Cross-tab communication (single tab only)",
+        "Background refresh of JWT (child token does not refresh)",
+        "Persistent session across app restart"
+      ],
+      "acceptance_criteria": [
+        "JWT is stored only in memory (verify DevTools shows no localStorage entries)",
+        "API requests include Authorization: Bearer header with JWT",
+        "Idle timer logs out child after 7200s of inactivity",
+        "Manual logout clears JWT and redirects to login",
+        "401 response triggers immediate logout",
+        "Error messages are user-friendly (no token details exposed)"
+      ],
+      "dependencies": ["BC-02-C1", "BC-01-C3"],
+      "labels": ["child-portal", "frontend", "auth", "session"],
+      "assumptions": [
+        "Child JWT is short-lived (15 min) and access-token-only (no refresh token)",
+        "Idle timeout of 2 hours is reasonable for occasional child access",
+        "In-memory storage is acceptable; no cross-tab sync needed for MVP"
+      ],
+      "split_rationale": "Client-side session management is distinct from server-side auth logic; separating allows focused testing of token handling and idle timeout.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward Context API or closure-based storage; standard interceptor pattern"
+        ]
+      }
+    },
+    {
+      "id": "BC-02-C8",
+      "title": "Mobile-first responsive design and accessibility baseline",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-02",
+      "outcome": "All child portal screens are responsive, accessible, and optimized for 8-10 year olds on mobile (375px+) and tablet (768px+) devices.",
+      "scope": [
+        "Base responsive layout: CSS Grid or Flexbox, no horizontal scroll on 375px+",
+        "Touch targets: ≥ 44px height and width for all interactive elements",
+        "Font sizes: ≥ 18px for body text, ≥ 24px for headings (larger than typical adult apps)",
+        "Color contrast: WCAG AA (4.5:1 for text); no color-only indicators (e.g., red/green must have icon/text)",
+        "Keyboard navigation: all interactive elements are reachable via Tab (not required for children using touch, but good practice)",
+        "Screen reader support: semantic HTML, alt text for images, ARIA labels where needed",
+        "Viewport meta tag: width=device-width, initial-scale=1, viewport-fit=cover",
+        "No horizontal scroll at any breakpoint (375px, 768px, 1024px+)",
+        "Test on real mobile devices: iOS Safari, Android Chrome (if feasible)"
+      ],
+      "non_goals": [
+        "WCAG AAA (highest contrast level)",
+        "Full keyboard-only navigation (touch is primary)",
+        "Support for very small devices (< 375px)"
+      ],
+      "acceptance_criteria": [
+        "All screens render correctly at 375px, 768px, and 1024px without horizontal scroll",
+        "Touch targets are ≥ 44px on all interactive elements",
+        "Font sizes are ≥ 18px for body text, ≥ 24px for headings",
+        "Color contrast meets WCAG AA (checked with automated tool or manual review)",
+        "Semantic HTML is used (buttons, inputs, headings, landmarks)",
+        "Images have descriptive alt text",
+        "Tab navigation works for keyboard users",
+        "App tested on iOS Safari and Android Chrome"
+      ],
+      "dependencies": ["BC-02-C1", "BC-02-C2", "BC-02-C3", "BC-02-C4", "BC-02-C5", "BC-02-C6"],
+      "labels": ["child-portal", "frontend", "mobile-first", "accessibility"],
+      "assumptions": [
+        "Primary device is mobile (375px+); tablet (768px+) is secondary",
+        "Touch input is primary; keyboard navigation is nice-to-have",
+        "8-10 year olds benefit from larger touch targets and text (larger than typical adult apps)",
+        "Testing on real devices is ideal but not required for MVP (emulators acceptable)"
+      ],
+      "split_rationale": "Responsive design and accessibility are cross-cutting concerns that span all child portal screens; treating as a separate capability ensures consistent baseline.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": true,
+        "reasons": [
+          "Applies to all 7 BC-02 child capabilities; should be validated in context of each",
+          "May require multiple passes: initial build → accessibility audit → refinement"
+        ]
+      }
+    },
+    {
+      "id": "BC-03-C1",
+      "title": "Parent registration and email verification",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-03",
+      "outcome": "A parent can register with their email and password, verify their email address, and create their account to access the parent portal.",
+      "scope": [
+        "POST /api/v1/auth/parent/register endpoint (already owned by BC-01-C1, but UI is in BC-03)",
+        "Registration form: email, password, confirm password, name (optional for MVP)",
+        "Submit registration → receive verification email with link",
+        "Verification flow: click email link → confirm token → account is verified",
+        "Handle errors: duplicate email, invalid email, password mismatch, weak password",
+        "Success: redirect to login page or auto-login (design decision)",
+        "Responsive: mobile-first, accessible forms"
+      ],
+      "non_goals": [
+        "Email resend logic (defer if low priority)",
+        "OAuth or social login",
+        "Admin override of verification"
+      ],
+      "acceptance_criteria": [
+        "Registration form accepts email and password with validation feedback",
+        "POST /register sends verification email",
+        "Email verification link contains valid token",
+        "Clicking verification link confirms account and allows login",
+        "Duplicate email returns error message",
+        "Weak password returns validation error",
+        "Form is responsive and accessible (WCAG AA)"
+      ],
+      "dependencies": ["BC-01-C1"],
+      "labels": ["parent-portal", "frontend", "auth"],
+      "assumptions": [
+        "Email verification is blocking (per OQ-3 assumption; if non-blocking, flow is simpler)",
+        "Parent name is optional for MVP (focus on email verification first)"
+      ],
+      "split_rationale": "Registration UI is separate from login UI; allows independent UX iteration and testing.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard registration form; leverages BC-01-C1 API"
+        ]
+      }
+    },
+    {
+      "id": "BC-03-C2",
+      "title": "Parent login, logout, and password recovery UI",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-03",
+      "outcome": "A verified parent can log in with email and password, access their dashboard, and securely recover a forgotten password.",
+      "scope": [
+        "Login form: email and password inputs with remember-me checkbox (optional for MVP)",
+        "POST /api/v1/auth/parent/login endpoint (owned by BC-01-C2, but UI is in BC-03)",
+        "Handle 401 response: display 'Invalid email or password' message (no user enumeration)",
+        "Forgot password link → email input form → send reset email",
+        "Reset email link → new password form → POST /api/v1/auth/parent/reset-password",
+        "Success: redirect to dashboard or auto-login",
+        "Logout: POST /api/v1/auth/parent/logout, clear auth state, redirect to login"
+      ],
+      "non_goals": [
+        "Two-factor authentication",
+        "Account lockout after failed attempts (rate-limited at API level by BC-01)"
+      ],
+      "acceptance_criteria": [
+        "Login form submits email/password and receives access token",
+        "Invalid credentials display generic error (no user enumeration)",
+        "Forgot password sends reset email",
+        "Reset link contains valid one-time token",
+        "Reset password updates account and allows new login",
+        "Logout clears auth state and redirects to login",
+        "Forms are responsive and accessible"
+      ],
+      "dependencies": ["BC-01-C2"],
+      "labels": ["parent-portal", "frontend", "auth"],
+      "assumptions": [
+        "Remember-me is optional (not required for MVP)",
+        "Rate-limiting is handled at API level (BC-01)"
+      ],
+      "split_rationale": "Login and recovery flows are distinct from registration and account management; separate UI development and testing.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard login and recovery forms; leverages BC-01-C2 API"
+        ]
+      }
+    },
+    {
+      "id": "BC-03-C3",
+      "title": "Add and manage child profiles",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-03",
+      "outcome": "A parent can add new child profiles to their account, view all their children, edit child names, and soft-delete child accounts.",
+      "scope": [
+        "Child profile fields: child name (hero name), age/grade (optional), PIN (generated or user-provided)",
+        "Add child form: name input, PIN input (or generate button), submit",
+        "Child list view: table or card grid with child name, PIN (masked for display), average score, last activity",
+        "Edit child: update name and PIN; no avatar change (child selects on login)",
+        "Delete child: soft-delete with confirmation dialog (archive, not remove)",
+        "POST /api/v1/parent/child (create), GET /api/v1/parent/children (list), PUT /api/v1/parent/child/:id (update), DELETE /api/v1/parent/child/:id (soft-delete)",
+        "Responsive: table on desktop, cards on mobile"
+      ],
+      "non_goals": [
+        "Parent approval of child activity (OQ-9 — out of MVP scope)",
+        "Bulk import of children",
+        "Hard delete (only soft-delete)"
+      ],
+      "acceptance_criteria": [
+        "Add child form submits name and PIN",
+        "POST /child returns new child record with ID",
+        "Child list displays all children with name, PIN (masked), score, last activity",
+        "Edit child updates name and PIN",
+        "Delete child soft-deletes with confirmation",
+        "Deleted children no longer appear in list (archived)",
+        "Responsive on mobile and desktop"
+      ],
+      "dependencies": [],
+      "labels": ["parent-portal", "frontend", "child-management"],
+      "assumptions": [
+        "PIN is user-provided or generated (design decision TBD)",
+        "Parent can manage multiple children (no limit in MVP, but scalability should be considered)",
+        "Soft-delete prevents accidental data loss; archived children are not visible in normal list"
+      ],
+      "split_rationale": "Child management is a distinct parent workflow; separate from progress dashboard and account settings.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard CRUD forms; straightforward API integration"
+        ]
+      }
+    },
+    {
+      "id": "BC-03-C4",
+      "title": "Child progress dashboard and activity metrics",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-03",
+      "outcome": "A parent can view each child's progress with missions completed, average score, current rank, streak, and strongest/weakest districts.",
+      "scope": [
+        "Dashboard layout: list or tab view of all children, selectable",
+        "Per child: hero name, avatar, rank badge, XP bar (progress to next rank)",
+        "Progress stats: missions completed, average score, current streak, longest streak (all-time)",
+        "District breakdown: strongest (highest average score) and weakest (lowest average score) districts",
+        "Recent activity: last 5 missions with date, score, district (optional for MVP)",
+        "GET /api/v1/parent/child/:id/progress endpoint returns all stats",
+        "Responsive: single column on mobile, multi-column grid on desktop"
+      ],
+      "non_goals": [
+        "Detailed mission history (limit to last 5 for MVP)",
+        "Comparison with other children or leaderboards",
+        "Parent-triggered activity approval or blocking"
+      ],
+      "acceptance_criteria": [
+        "Dashboard lists all children",
+        "Selected child displays hero profile (name, avatar, rank, XP bar)",
+        "Stats are accurate: missions, average score, streak, strongest/weakest",
+        "Recent activity shows last 5 missions",
+        "Responsive on mobile and desktop",
+        "Data is read-only (parent cannot modify child scores)"
+      ],
+      "dependencies": ["BC-05"],
+      "labels": ["parent-portal", "frontend", "progress-dashboard"],
+      "assumptions": [
+        "Child progress data is owned by Assessment Engine and Gamification services",
+        "Parent can see all children's progress without approval workflow (OQ-9 is out of scope)",
+        "Streak and strongest/weakest are computed by Gamification service"
+      ],
+      "split_rationale": "Progress dashboard is a distinct parent concern from child management; separate development and testing.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Data display and summary calculations; straightforward API integration"
+        ]
+      }
+    },
+    {
+      "id": "BC-03-C5",
+      "title": "Subscription and billing information display",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-03",
+      "outcome": "A parent can view their current subscription plan (free for MVP), see what features are included, and understand next steps for premium plans.",
+      "scope": [
+        "Subscription card: plan name (free), price ($0/month for MVP), features list",
+        "For MVP: all features are free; no upgrade button",
+        "Badge on dashboard: 'Free Plan' or similar",
+        "GET /api/v1/parent/subscription endpoint returns plan name and feature list",
+        "Text placeholder: 'Premium plans coming soon' or similar (design decision)",
+        "Responsive: card view on all devices"
+      ],
+      "non_goals": [
+        "Stripe integration (deferred to BC-07 post-MVP)",
+        "Plan upgrade/downgrade UI",
+        "Invoice history"
+      ],
+      "acceptance_criteria": [
+        "Subscription card displays plan name and price",
+        "Features list is accurate (all features available in free plan for MVP)",
+        "Placeholder for premium plans is present",
+        "GET /subscription returns plan data",
+        "Responsive on mobile and desktop"
+      ],
+      "dependencies": [],
+      "labels": ["parent-portal", "frontend", "billing"],
+      "assumptions": [
+        "All MVP users are on free plan (no gating enforcement needed)",
+        "Premium plans are a post-MVP feature (placeholder only)",
+        "Stripe integration is handled by BC-07 post-MVP"
+      ],
+      "split_rationale": "Billing information is a distinct parent concern; separating allows independent design and future Stripe integration (BC-07).",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple card display for MVP; no transaction logic"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C1",
+      "title": "Question bank API: storage, retrieval, and CRUD operations",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "The system stores questions with metadata (topic, difficulty, stem, answers) and exposes APIs for admin CRUD and child retrieval.",
+      "scope": [
+        "Question model: id, topic_id, subject_id, stem (text), answer_options (JSON array), correct_answer_idx (0-3), difficulty (1-3), created_at, soft_delete_flag",
+        "Seed data: 150 questions at 11+ standard across 5 topics in 1 subject (Mathropolis)",
+        "Admin CRUD endpoints: POST /api/v1/admin/question, GET /api/v1/admin/question/:id, PUT /api/v1/admin/question/:id, DELETE /api/v1/admin/question/:id (soft-delete)",
+        "Child retrieval: GET /api/v1/child/mission/:mission_id/attempt (returns ordered question set filtered for mission)",
+        "Schema validation: question stem is non-empty, answer_options array has exactly 4 items, correct_answer_idx is 0-3",
+        "Indexing: topic_id and subject_id for efficient filtering"
+      ],
+      "non_goals": [
+        "Rich text editor for question stem (plain text for MVP)",
+        "Question versioning or branching",
+        "Audio/video questions"
+      ],
+      "acceptance_criteria": [
+        "POST /question creates question and returns ID",
+        "GET /question/:id returns question (admin view includes all fields; child view may exclude answers)",
+        "PUT /question/:id updates question fields",
+        "DELETE /question/:id soft-deletes",
+        "Seed script creates 150 questions",
+        "Questions are indexed by topic for efficient retrieval",
+        "Schema validation prevents invalid records"
+      ],
+      "dependencies": [],
+      "labels": ["assessment-engine", "backend", "data"],
+      "assumptions": [
+        "Questions are plain text (no rich formatting in MVP)",
+        "4 multiple-choice answers per question (fixed for MVP)",
+        "Difficulty is 1-3 star rating (visual; no gameplay impact)"
+      ],
+      "split_rationale": "Question bank is a data store with dedicated CRUD API; separating from assessment definitions and attempt scoring clarifies responsibilities.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward CRUD API; seed script is standard data load"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C2",
+      "title": "Assessment definitions API: CRUD and topic-based fetching",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "The system stores assessment definitions (missions) with metadata and allows admins to create/edit them, and children to fetch assessments by topic.",
+      "scope": [
+        "Assessment model: id, mission_id, name, description, topic_id, district_id, num_questions (10), difficulty (1-3), created_at, soft_delete_flag",
+        "Admin CRUD: POST /api/v1/admin/assessment, GET /api/v1/admin/assessment/:id, PUT /api/v1/admin/assessment/:id, DELETE /api/v1/admin/assessment/:id (soft-delete)",
+        "Assessment questions: link questions to assessment (many-to-many or array of question IDs in assessment record)",
+        "Child retrieval: GET /api/v1/child/assessment?topic_id=X or GET /api/v1/child/mission/:mission_id (returns assessment with num_questions questions)",
+        "Seed data: 5 topics, 15 assessments (3 per district, 5 districts), linked to question set",
+        "Schema validation: name is non-empty, num_questions matches actual question count, topic_id exists"
+      ],
+      "non_goals": [
+        "Question randomization per attempt (owned by BC-04-C6)",
+        "Assessment versioning or templates",
+        "Prerequisite enforcement"
+      ],
+      "acceptance_criteria": [
+        "POST /assessment creates assessment and returns ID",
+        "Assessment links to questions (10 per assessment for MVP)",
+        "GET /assessment/:id returns assessment with question list",
+        "PUT /assessment/:id updates assessment fields",
+        "DELETE /assessment/:id soft-deletes",
+        "Seed script creates 15 assessments (3 per district)",
+        "GET /assessment?topic_id=X returns assessments for topic",
+        "Child API returns assessment with exact num_questions questions"
+      ],
+      "dependencies": ["BC-04-C1"],
+      "labels": ["assessment-engine", "backend", "data"],
+      "assumptions": [
+        "Each assessment has exactly 10 questions (fixed for MVP)",
+        "Difficulty is 1-3 star rating (visual; no gameplay impact)",
+        "Assessments are seeded with fixed question sets (no dynamic selection in MVP)"
+      ],
+      "split_rationale": "Assessment definitions are distinct from question bank and from attempt scoring; clear separation of concerns.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward CRUD API; many-to-many linking is a standard pattern"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C3",
+      "title": "Attempt submission API and answer evaluation",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "A child can submit their 10 answers to an assessment, the system evaluates them against the correct answers, and returns a score.",
+      "scope": [
+        "Attempt submission: POST /api/v1/child/attempt with { attempt_uuid, mission_id, answers: [question_id: answer_idx, ...] }",
+        "Answer validation: verify all 10 questions are answered, answer_idx is 0-3",
+        "Scoring: compare each answer_idx to correct_answer_idx, count correct answers",
+        "Response: { attempt_id, mission_id, score: N/10, attempted_at, child_id }",
+        "Attempt deduplication: attempt_uuid is unique constraint; replay same UUID returns cached result (idempotency)",
+        "Store attempt record: attempt_id, child_id, mission_id, score, answers (JSON), attempted_at, created_at",
+        "Trigger post-attempt side-effect: notify Gamification service to compute stars and XP (BC-05)"
+      ],
+      "non_goals": [
+        "Star rating computation (owned by BC-04-C4)",
+        "XP computation (owned by BC-05)",
+        "Attempt review or analytics"
+      ],
+      "acceptance_criteria": [
+        "POST /attempt accepts answers and returns score",
+        "Score is computed correctly (correct answers / 10)",
+        "All 10 questions must be answered; incomplete attempts return 400",
+        "Attempt UUID is unique; replaying same UUID returns cached result (idempotency)",
+        "Attempt is stored with child_id and mission_id for later retrieval",
+        "Post-attempt hook triggers Gamification side-effect"
+      ],
+      "dependencies": ["BC-04-C1", "BC-04-C2"],
+      "labels": ["assessment-engine", "backend"],
+      "assumptions": [
+        "Attempt submission is synchronous and returns result immediately",
+        "Idempotency is achieved via unique constraint on attempt_uuid",
+        "Post-attempt side-effects run in-process (no async queue for MVP)"
+      ],
+      "split_rationale": "Attempt submission and scoring are core to the assessment flow; separating from star/XP computation keeps the contract clean.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward API; answer comparison is simple logic; idempotency via UUID is a known pattern"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C4",
+      "title": "Star rating computation based on score",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "After an attempt is scored, the system computes a star rating (1-3) based on the child's accuracy and includes it in the feedback response.",
+      "scope": [
+        "Star thresholds (TBD, e.g., ≥ 70% = 1 star, ≥ 80% = 2 stars, ≥ 90% = 3 stars)",
+        "Compute stars in POST /attempt response: { attempt_id, score, stars, xp_earned }",
+        "Star computation logic: score / num_questions * 100 → check thresholds → return 1-3",
+        "All attempts earn at least 1 star (e.g., if score >= 50%, 1 star; >= 75%, 2 stars; >= 90%, 3 stars)",
+        "Thresholds are configurable (constants or DB records, TBD)",
+        "XP earned is based on stars (e.g., 1 star = 10 XP, 2 stars = 20 XP, 3 stars = 30 XP)"
+      ],
+      "non_goals": [
+        "Time-based stars or speed bonuses",
+        "Streak multipliers (owned by BC-05)",
+        "Difficulty-adjusted scoring"
+      ],
+      "acceptance_criteria": [
+        "Star thresholds are defined and documented",
+        "Score is converted to stars (1-3) correctly",
+        "All attempts earn at least 1 star",
+        "XP earned is based on stars",
+        "POST /attempt response includes stars and xp_earned",
+        "Thresholds can be adjusted without code change (ideally)"
+      ],
+      "dependencies": ["BC-04-C3"],
+      "labels": ["assessment-engine", "backend", "gamification"],
+      "assumptions": [
+        "Star thresholds are simple percentage-based rules (≥ X% = Y stars)",
+        "XP earned is proportional to stars (fixed multiplier)",
+        "Difficulty does not affect star calculation (all missions have same scale)"
+      ],
+      "split_rationale": "Star computation is a distinct gamification output; separating allows independent testing and potential future complexity (e.g., difficulty-adjusted scores).",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple percentage-based threshold logic; no external dependencies"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C5",
+      "title": "Subscription-gated access control",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "Child access to assessment attempts is gated by subscription plan; the system checks the parent's plan before allowing an attempt and returns 403 if plan is not active.",
+      "scope": [
+        "Subscription check in POST /attempt: fetch parent's subscriptions record, verify plan is active (plan != 'free' or allow all in MVP stub)",
+        "For MVP stub: all users are on 'free' plan; gate is stubbed to always return 200 (placeholder for post-MVP Stripe gating)",
+        "Return 403 Forbidden if parent's plan is 'free' and mission is 'premium' (design: which missions are premium is TBD)",
+        "Response: { error: 'subscription_required', upgrade_link: '/parent/upgrade' } (placeholder)",
+        "Log gating decisions for admin visibility (optional)"
+      ],
+      "non_goals": [
+        "Stripe integration (handled by BC-07 post-MVP)",
+        "Trial periods or freemium limits",
+        "Per-mission pricing variations"
+      ],
+      "acceptance_criteria": [
+        "POST /attempt checks parent's subscription plan",
+        "Free plan users can attempt free assessments (all MVP assessments)",
+        "Premium users can attempt premium assessments (not in MVP; placeholders only)",
+        "403 Forbidden is returned if plan check fails",
+        "Plan field is read from subscriptions table",
+        "All MVP users are on free plan (stubbed)"
+      ],
+      "dependencies": ["BC-04-C3"],
+      "labels": ["assessment-engine", "backend", "billing"],
+      "assumptions": [
+        "MVP stub: all assessments are 'free'; all users are on 'free' plan; gating is not enforced",
+        "Subscription plan is stored in subscriptions table with parent_id foreign key",
+        "Post-MVP: Stripe will update plan field on webhook events (handled by BC-07)"
+      ],
+      "split_rationale": "Subscription gating is a distinct concern that crosses Assessment Engine and Payments domains; separating allows independent testing and future Stripe integration.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple table lookup and comparison; MVP stub is minimal code"
+        ]
+      }
+    },
+    {
+      "id": "BC-04-C6",
+      "title": "Attempt deduplication via UUID",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-04",
+      "outcome": "Attempt submissions are idempotent; a child can safely retry a POST /attempt request with the same UUID and receive the same result without double-scoring.",
+      "scope": [
+        "Client generates attempt_uuid (UUID v4) at mission start and stores it locally",
+        "POST /attempt includes attempt_uuid in request body",
+        "Database: unique constraint on (child_id, attempt_uuid) composite key",
+        "On duplicate submission: query DB for existing attempt with same UUID, return cached result (200 OK, same response as before)",
+        "Response headers: include Idempotency-Key or similar to signal retry-safe semantics",
+        "Error handling: if duplicate attempt has different answers, log warning and return cached result (conservative approach)"
+      ],
+      "non_goals": [
+        "Distributed idempotency (single server only)",
+        "Idempotency key headers (optional enhancement)",
+        "Attempt modification after submission"
+      ],
+      "acceptance_criteria": [
+        "Client generates attempt UUID at mission start",
+        "POST /attempt with UUID creates new attempt record",
+        "POST /attempt with duplicate UUID returns cached result without re-scoring",
+        "Unique constraint on (child_id, attempt_uuid) prevents duplicate inserts",
+        "Response includes attempt_id for tracking"
+      ],
+      "dependencies": ["BC-04-C3"],
+      "labels": ["assessment-engine", "backend"],
+      "assumptions": [
+        "Client-generated UUID is sufficient for idempotency (no server-side token needed)",
+        "Duplicate attempts with different answers should not occur in normal flow; log and return cached result",
+        "Single server deployment; distributed idempotency not required"
+      ],
+      "split_rationale": "Idempotency is a distinct resilience concern; separating allows focused testing of retry scenarios.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple unique constraint and cache lookup; standard idempotency pattern"
+        ]
+      }
+    },
+    {
+      "id": "BC-05-C1",
+      "title": "XP accumulation and persistence service",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-05",
+      "outcome": "After an attempt is scored, the child's XP total is incremented and persisted; the new XP and current rank are returned to the frontend.",
+      "scope": [
+        "Triggered as post-attempt side-effect (called from BC-04-C3)",
+        "Update child.xp_total = xp_total + xp_earned in transaction",
+        "Persist to child record in DB",
+        "Return updated child stats: { xp_total, rank_tier, xp_to_next_rank }",
+        "XP is cumulative (never decreases)",
+        "Rank is computed from XP (see BC-05-C2)",
+        "In-process service (not async/queue for MVP)"
+      ],
+      "non_goals": [
+        "XP decay or expiration",
+        "XP multipliers per district (keep simple for MVP)",
+        "XP bonus events"
+      ],
+      "acceptance_criteria": [
+        "POST /attempt triggers XP accumulation",
+        "Child.xp_total is incremented correctly",
+        "Rank is recomputed after XP change",
+        "Updated stats are returned immediately",
+        "XP is persisted and survives app restart"
+      ],
+      "dependencies": ["BC-04-C4"],
+      "labels": ["gamification", "backend"],
+      "assumptions": [
+        "XP earned is provided by Assessment Engine (stars-based, e.g., 1 star = 10 XP)",
+        "Rank is computed separately (BC-05-C2) based on XP thresholds",
+        "In-process service runs synchronously within attempt submission"
+      ],
+      "split_rationale": "XP accumulation is a distinct gamification service; separating from rank evaluation allows independent testing.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple transaction to increment and persist XP; no complex logic"
+        ]
+      }
+    },
+    {
+      "id": "BC-05-C2",
+      "title": "Rank tier evaluation and milestone transitions",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-05",
+      "outcome": "When a child's XP reaches a milestone threshold, their rank tier is incremented and an achievement or badge is awarded.",
+      "scope": [
+        "Rank tier model: child.rank_tier (1-10 for MVP, e.g., Novice → Expert → Master)",
+        "XP thresholds per tier: tier_1 = 0 XP, tier_2 = 50 XP, tier_3 = 100 XP, ... (TBD exact values)",
+        "Rank evaluation after XP accumulation: compare total_xp to thresholds, update rank_tier if necessary",
+        "Milestone achievement: emit achievement event when tier is reached (owned by BC-05-C4)",
+        "Return updated rank and xp_to_next_rank to frontend",
+        "Rank is immutable once reached (no tier loss)"
+      ],
+      "non_goals": [
+        "Rank decay",
+        "Rank-based restrictions on gameplay",
+        "Leaderboard rankings"
+      ],
+      "acceptance_criteria": [
+        "Rank thresholds are defined (e.g., tier_1 = 0, tier_2 = 50, tier_3 = 100)",
+        "Child's rank tier is updated when XP threshold is crossed",
+        "Rank never decreases",
+        "xp_to_next_rank is calculated correctly",
+        "Achievement event is emitted on rank transition"
+      ],
+      "dependencies": ["BC-05-C1"],
+      "labels": ["gamification", "backend"],
+      "assumptions": [
+        "Rank thresholds are simple XP-based milestones (no other conditions)",
+        "Max rank tier is 10 (or TBD)",
+        "Rank has no gameplay impact in MVP (visual/motivational only)"
+      ],
+      "split_rationale": "Rank evaluation is distinct from XP accumulation and from achievement awarding; separating allows focused testing.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple threshold comparison and update logic"
+        ]
+      }
+    },
+    {
+      "id": "BC-05-C3",
+      "title": "Streak tracking system",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-05",
+      "outcome": "The system tracks each child's current streak (consecutive days with completed missions) and all-time longest streak; streaks are maintained across sessions.",
+      "scope": [
+        "Streak model: child.current_streak, child.longest_streak (both cumulative day counts)",
+        "Streak increment trigger: when child completes a mission on a new day (check if last_activity_date < today)",
+        "Streak reset trigger: if no missions for 1 calendar day after last_activity_date, reset current_streak to 0",
+        "Background job or check on each attempt: if today != last_activity_date, increment current_streak (or reset)",
+        "Longest streak is updated when current_streak exceeds it",
+        "Streak bonus: optional, e.g., 3-day streak = +5 XP bonus (TBD, may be owned by BC-04-C4)"
+      ],
+      "non_goals": [
+        "Reminders or notifications for maintaining streaks",
+        "Streak-based content gating",
+        "Timezone-aware day calculations (assume UTC for MVP)"
+      ],
+      "acceptance_criteria": [
+        "Current streak is incremented when mission is completed on new day",
+        "Current streak is reset if no missions for 1+ days",
+        "Longest streak is updated when current_streak exceeds it",
+        "Streak data is persisted and survives session",
+        "Streak is displayed in hero profile (BC-02-C6)"
+      ],
+      "dependencies": [],
+      "labels": ["gamification", "backend"],
+      "assumptions": [
+        "Day boundary is UTC midnight (or configurable)",
+        "Streak logic runs on each attempt submission (no separate job needed)",
+        "Streak bonus may be applied here or in BC-04-C4 (TBD)"
+      ],
+      "split_rationale": "Streak tracking is a distinct gamification concern; separating allows independent testing and potential future features (reminders, notifications).",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward date comparison and counter logic; may need timezone handling"
+        ]
+      }
+    },
+    {
+      "id": "BC-05-C4",
+      "title": "Achievement evaluation and awarding logic",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-05",
+      "outcome": "The system evaluates achievement unlock conditions after each attempt and awards badges to the child when conditions are met.",
+      "scope": [
+        "Achievement model: id, name (e.g., 'Perfect Score'), condition (rule, e.g., 'score == 10'), badge_icon_url, unlocked_date (if earned)",
+        "Achievement conditions: score-based (100% correct), district-based (complete all missions in a district), streak-based (5-day streak), XP-based (reach 500 XP)",
+        "Evaluation trigger: after each attempt, check if any achievement conditions are met",
+        "Award logic: if condition met and not already awarded, create achievement_earned record and emit event",
+        "Achievements cannot be un-awarded (one-time unlock)",
+        "Return new achievements in POST /attempt response (optional, or fetch via separate API)"
+      ],
+      "non_goals": [
+        "Dynamic achievement creation",
+        "Leaderboard for achievement hunters",
+        "Achievement social sharing"
+      ],
+      "acceptance_criteria": [
+        "Achievement conditions are defined (score, district, streak, XP)",
+        "Evaluation checks all conditions after each attempt",
+        "Achievement is awarded when condition is met",
+        "Duplicate awards are prevented (unique constraint)",
+        "Achievement data includes name, description, icon, unlock date",
+        "Achievements are returned in profile API (BC-02-C6)"
+      ],
+      "dependencies": ["BC-05-C1", "BC-05-C2", "BC-05-C3"],
+      "labels": ["gamification", "backend"],
+      "assumptions": [
+        "Achievement conditions are rule-based, not event-based (simpler than event system)",
+        "Achievements are predefined in DB (no dynamic generation in MVP)",
+        "Achievement unlock is permanent and irreversible"
+      ],
+      "split_rationale": "Achievement logic is distinct from XP, rank, and streak; separating allows focused testing and potential future expansion (social, rarity).",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Rule evaluation and award logic is straightforward; condition checks are simple queries"
+        ]
+      }
+    },
+    {
+      "id": "BC-05-C5",
+      "title": "Child statistics API and aggregation",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-05",
+      "outcome": "The system exposes a child stats API that aggregates and returns missions completed, average score, streak, strongest and weakest districts for display in hero profile and parent dashboard.",
+      "scope": [
+        "GET /api/v1/child/profile endpoint: returns { hero_name, avatar_id, rank_tier, xp_total, current_streak, longest_streak, missions_completed, average_score, strongest_district, weakest_district, achievements }",
+        "Aggregations: sum(missions), avg(score per mission), max(strongest_district by avg_score), min(weakest_district by avg_score)",
+        "District aggregation: group attempts by district, compute avg score and mission count per district",
+        "Caching: optional, cache profile stats for 1 minute to reduce DB queries (not required for MVP)",
+        "Deferred computation: stats are computed on-demand (no separate job needed)"
+      ],
+      "non_goals": [
+        "Real-time stats updates (acceptable lag of 1 second per request)",
+        "Historical stats or time-series data",
+        "Peer comparisons or rankings"
+      ],
+      "acceptance_criteria": [
+        "GET /profile returns all required stats",
+        "Missions completed is accurate count",
+        "Average score is computed correctly",
+        "Streak values are current",
+        "Strongest/weakest districts are identified correctly",
+        "Achievements array includes all earned badges"
+      ],
+      "dependencies": ["BC-05-C1", "BC-05-C3", "BC-05-C4"],
+      "labels": ["gamification", "backend", "api"],
+      "assumptions": [
+        "Stats are computed on-demand (no background aggregation job)",
+        "Caching is optional for MVP (add if performance is an issue)",
+        "All required data is already in the database (XP, rank, streak, achievements, attempts)"
+      ],
+      "split_rationale": "Stats aggregation is a distinct API concern; separating allows independent testing and potential caching optimization.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Query aggregations are straightforward SQL; no complex logic"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C1",
+      "title": "Admin authentication and authorization",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "An admin can log in with email and password and access the admin portal with role-based access control enforced.",
+      "scope": [
+        "Admin login UI: email and password form (leverages BC-01-C4 API)",
+        "Middleware: requireRole('admin') on all /api/v1/admin/* routes (owned by BC-01-C8)",
+        "Admin session: JWT with admin role stored in memory (like child JWT)",
+        "Logout: POST /api/v1/admin/logout, clear JWT, redirect to login",
+        "Error handling: 401 for invalid credentials, 403 for unauthorized access",
+        "Admin seed script: create 1-2 admin accounts at deployment time (credentials logged or provided)"
+      ],
+      "non_goals": [
+        "Two-factor authentication",
+        "Admin account creation UI (OQ-8 — seed script only)",
+        "Audit logging of admin actions"
+      ],
+      "acceptance_criteria": [
+        "Admin login form submits email/password",
+        "POST /login returns JWT with admin role",
+        "Invalid credentials return 401",
+        "Unauthorized routes return 403 (checked by middleware)",
+        "Logout clears JWT and redirects to login",
+        "Admin seed accounts are created at deployment"
+      ],
+      "dependencies": ["BC-01-C4", "BC-01-C8"],
+      "labels": ["admin-portal", "frontend", "auth"],
+      "assumptions": [
+        "Admin accounts are seeded via script; no self-signup (OQ-8)",
+        "JWT is stored in memory (same pattern as child JWT)"
+      ],
+      "split_rationale": "Admin login UI is specific to the admin portal; separating from general auth logic allows focused admin-specific flow.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Leverages existing BC-01 auth APIs; standard form and middleware"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C2",
+      "title": "Question management interface (CRUD)",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "An admin can create, read, update, and soft-delete questions with validation and error handling.",
+      "scope": [
+        "Question form: stem (text), answer_options (4 text inputs), correct_answer_idx (dropdown 0-3), topic (dropdown), difficulty (dropdown 1-3)",
+        "Create: submit form → POST /api/v1/admin/question → receive question_id",
+        "Read: question list table with search/filter by topic, edit/delete buttons",
+        "Edit: click edit → populate form with question data → PUT /api/v1/admin/question/:id",
+        "Delete: confirm dialog → DELETE /api/v1/admin/question/:id (soft-delete)",
+        "Error handling: display validation errors, network errors",
+        "Responsive: table on desktop, cards on mobile"
+      ],
+      "non_goals": [
+        "Rich text editor for question stem",
+        "Bulk import or export",
+        "Question versioning or history"
+      ],
+      "acceptance_criteria": [
+        "Question form validates all required fields",
+        "POST /question creates and returns ID",
+        "Question list displays all questions (paginated if >50)",
+        "Edit form populates with question data",
+        "PUT /question/:id updates and returns success",
+        "DELETE /question/:id soft-deletes",
+        "Search/filter by topic works",
+        "Error messages are displayed"
+      ],
+      "dependencies": ["BC-04-C1", "BC-06-C1"],
+      "labels": ["admin-portal", "frontend", "content-management"],
+      "assumptions": [
+        "Questions are plain text (no rich formatting)",
+        "Correct answer is selected via dropdown (0-3)",
+        "Topics are predefined (not creatable by admin in MVP)"
+      ],
+      "split_rationale": "Question management is a distinct admin capability; separating from assessment management allows independent UI/UX development.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": [
+          "CRUD forms are straightforward; table with pagination and search are standard patterns"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C3",
+      "title": "Assessment management interface (CRUD with question assignment)",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "An admin can create, read, update, and soft-delete assessments and assign questions to them.",
+      "scope": [
+        "Assessment form: name, description, district (dropdown), topic (dropdown), num_questions (auto-filled to 10 for MVP), difficulty (dropdown)",
+        "Question selection: multi-select or table of available questions filtered by topic; admin selects 10",
+        "Create: submit form → POST /api/v1/admin/assessment → link questions via association table or array",
+        "Read: assessment list with name, district, question count, delete button",
+        "Edit: click edit → populate form and question selection",
+        "Delete: confirm dialog → DELETE /api/v1/admin/assessment/:id (soft-delete)",
+        "Responsive: table on desktop, cards on mobile"
+      ],
+      "non_goals": [
+        "Dynamic question selection based on difficulty",
+        "Question randomization rules",
+        "Assessment scheduling or rollout"
+      ],
+      "acceptance_criteria": [
+        "Assessment form validates required fields",
+        "POST /assessment creates and links 10 questions",
+        "Assessment list displays all assessments",
+        "Edit form populates with assessment data and selected questions",
+        "PUT /assessment/:id updates and re-links questions",
+        "DELETE /assessment/:id soft-deletes",
+        "Question count is validated (must be exactly 10 for MVP)",
+        "Error messages are displayed"
+      ],
+      "dependencies": ["BC-04-C2", "BC-06-C1", "BC-06-C2"],
+      "labels": ["admin-portal", "frontend", "content-management"],
+      "assumptions": [
+        "Each assessment has exactly 10 questions (fixed for MVP)",
+        "Questions are selected from same topic",
+        "Admin must manually select 10 questions (no auto-selection algorithm)"
+      ],
+      "split_rationale": "Assessment management is distinct from question management; separating allows independent testing of the question assignment flow.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": [
+          "Multi-select UI and question linking are moderately complex; standard form patterns"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C4",
+      "title": "User account management (list, view, soft-delete)",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "An admin can view all parent and child accounts, access account details, and soft-delete accounts if needed.",
+      "scope": [
+        "User list: table with two tabs (Parents, Children)",
+        "Parent tab: email, name, num_children, account_created, delete button",
+        "Child tab: hero_name, parent_email, rank_tier, missions_completed, last_activity, delete button",
+        "User detail view: click user → see full profile (parent email, children list; or child name, parent, stats)",
+        "Soft-delete: confirm dialog → DELETE /api/v1/admin/user/:id",
+        "Search/filter: by email (parents), by hero_name (children)",
+        "Responsive: table on desktop, cards on mobile"
+      ],
+      "non_goals": [
+        "Hard delete of user data",
+        "Account suspension or freezing",
+        "Bulk user operations"
+      ],
+      "acceptance_criteria": [
+        "User list displays all parents and children",
+        "Parent tab shows email, name, num_children",
+        "Child tab shows hero_name, parent_email, rank, missions",
+        "Search by email (parent) and hero_name (child) works",
+        "User detail view shows full profile",
+        "DELETE /user/:id soft-deletes account",
+        "Deleted users no longer appear in list",
+        "Responsive on mobile and desktop"
+      ],
+      "dependencies": ["BC-06-C1"],
+      "labels": ["admin-portal", "frontend", "user-management"],
+      "assumptions": [
+        "Soft-delete is the only deletion strategy (no hard delete in MVP)",
+        "Deleted accounts are filtered out of normal list but remain in DB",
+        "No partial user data deletion (full account soft-delete only)"
+      ],
+      "split_rationale": "User account management is a distinct admin concern; separating from content (questions/assessments) allows independent UI/UX.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard list and detail views; search and filter are straightforward"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C5",
+      "title": "Subscription and payment overview display",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "An admin can view subscription status and plan information for all parents to monitor billing readiness.",
+      "scope": [
+        "Subscription dashboard: list or summary of all parent subscriptions",
+        "Per parent: email, current plan (free for MVP), subscription_id, renewal_date (if applicable)",
+        "For MVP: all parents are on 'free' plan; no Stripe data",
+        "Read-only view: no ability to modify subscriptions in MVP",
+        "GET /api/v1/admin/subscriptions endpoint returns list",
+        "Responsive: table on desktop, cards on mobile"
+      ],
+      "non_goals": [
+        "Stripe dashboard integration",
+        "Manual invoice generation",
+        "Subscription modification by admin"
+      ],
+      "acceptance_criteria": [
+        "Subscription list displays all parents and their plans",
+        "Plan field is accurate (free for MVP)",
+        "GET /subscriptions returns list of parent subscriptions",
+        "Responsive on mobile and desktop",
+        "Read-only (no edit or delete)"
+      ],
+      "dependencies": [],
+      "labels": ["admin-portal", "frontend", "billing"],
+      "assumptions": [
+        "All MVP users are on 'free' plan (no Stripe data)",
+        "Subscription list is read-only for MVP (no admin modifications)",
+        "Stripe integration will be handled post-MVP (BC-07)"
+      ],
+      "split_rationale": "Subscription display is a distinct admin concern; separating allows independent future Stripe integration.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple table display of plan data; read-only for MVP"
+        ]
+      }
+    },
+    {
+      "id": "BC-06-C6",
+      "title": "Admin portal layout and data-dense UI patterns",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "BC-06",
+      "outcome": "The admin portal has a consistent, data-dense layout optimized for desktop with tables, forms, and navigation.",
+      "scope": [
+        "Layout: sidebar navigation, main content area, header with admin name and logout",
+        "Navigation: links to Questions, Assessments, Users (Parents/Children), Subscriptions",
+        "Data tables: sortable columns, pagination (25 rows per page), search/filter inputs",
+        "Forms: two-column layout on desktop for compact display",
+        "Colors/typography: professional, not playful (unlike child/parent portals)",
+        "Responsive: 768px+ (desktop-first; mobile not required)",
+        "Dark mode or light mode: design decision (not required for MVP)",
+        "Error handling: toast notifications or alerts for errors"
+      ],
+      "non_goals": [
+        "Mobile-first responsive (768px+ only)",
+        "Dark mode or theme switcher",
+        "Advanced data visualization or charts"
+      ],
+      "acceptance_criteria": [
+        "Navigation sidebar is present with all main sections",
+        "Tables display data with sortable columns and pagination",
+        "Search/filter inputs are functional",
+        "Forms use two-column layout on desktop",
+        "Responsive at 768px+ (no mobile responsiveness required)",
+        "Error messages are displayed clearly",
+        "Admin name and logout are visible in header"
+      ],
+      "dependencies": ["BC-06-C2", "BC-06-C3", "BC-06-C4", "BC-06-C5"],
+      "labels": ["admin-portal", "frontend", "ui"],
+      "assumptions": [
+        "Admin portal is desktop-only (768px+); mobile support not required",
+        "Data-dense layout is acceptable (no whitespace padding like child portal)",
+        "Professional styling is preferred over playful superhero theme"
+      ],
+      "split_rationale": "Portal layout and UI patterns are cross-cutting; treating as a separate capability ensures consistent design across all admin pages.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": true,
+        "reasons": [
+          "Applies to all 5 admin capabilities; should be established early and validated across all views",
+          "May require multiple design iterations and accessibility reviews"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C1",
+      "title": "Project structure and monorepo layout (client + server)",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "The project is organized as a monorepo with /client (Vite SPA) and /server (Express API) directories; builds are independent and deployment is straightforward.",
+      "scope": [
+        "Root structure: /client, /server, /shared (optional), package.json (workspace root), .env.example",
+        "Client: /src (React + TS), /public, vite.config.ts, package.json (dependencies)",
+        "Server: /src (Express + TS), /migrations, /seeds, server.ts, package.json (dependencies)",
+        "Root package.json: workspaces (npm/yarn) or workspace setting, scripts for build/dev/test",
+        "Scripts: npm run build (builds both), npm run dev (runs both in parallel or serial), npm run start (production)",
+        "Version control: .gitignore excludes /node_modules, /dist, /build, .env (but not .env.example)",
+        "TypeScript config: separate tsconfig for client and server; root tsconfig extends base"
+      ],
+      "non_goals": [
+        "Polyrepo with separate repos for client and server",
+        "Shared code between client and server (separate node_modules)",
+        "Workspace packages (all code in client/server, not separate packages)"
+      ],
+      "acceptance_criteria": [
+        "Monorepo structure created with /client and /server",
+        "Both directories have independent package.json and build configs",
+        "Root scripts (build, dev, start) work correctly",
+        "TypeScript configs are separate and correct",
+        ".gitignore excludes build artifacts and node_modules",
+        "Workspace tooling (npm/yarn) is configured"
+      ],
+      "dependencies": [],
+      "labels": ["infrastructure", "setup"],
+      "assumptions": [
+        "npm workspaces is the preferred tool (not yarn or lerna)",
+        "Client and server are deployed together (single server);"
+      ],
+      "split_rationale": "Project structure is foundational; separating as a capability ensures it's completed before other work begins.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard monorepo setup; straightforward directory layout and script configuration"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C2",
+      "title": "Express static serving and SPA fallback routing",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "Express serves the built Vite SPA from /client/dist and provides SPA fallback routing so all non-/api/* routes return index.html.",
+      "scope": [
+        "Express middleware stack: static file serving, API routing, SPA fallback",
+        "Serve static files: app.use(express.static('client/dist'))",
+        "API routing: app.use('/api', apiRouter) — passes through to API routes",
+        "SPA fallback: app.use((req, res) => res.sendFile('client/dist/index.html')) — catches all other routes",
+        "Content-type headers: set correctly for .js, .css, .html files",
+        "Gzip compression: optional, enables for static assets",
+        "CORS: configure if needed (likely not for single-domain deployment)"
+      ],
+      "non_goals": [
+        "CDN or caching headers (simple Cache-Control only)",
+        "API request logging (separate logging concern)",
+        "Authentication on static files"
+      ],
+      "acceptance_criteria": [
+        "Express serves /client/dist as root",
+        "/api/* routes pass through to API handlers",
+        "Non-/api/* routes return index.html (SPA routing)",
+        "Static files have correct Content-Type headers",
+        "CSS and JS files load correctly in browser",
+        "SPA routes like /child/mission/:id work (return index.html)"
+      ],
+      "dependencies": ["CC-01-C1"],
+      "labels": ["infrastructure", "backend"],
+      "assumptions": [
+        "Single Express process serves both API and static assets",
+        "Vite builds to /client/dist for production",
+        "SPA fallback is sufficient for single-domain deployment"
+      ],
+      "split_rationale": "Static serving and SPA fallback are distinct infrastructure concerns; separating allows focused testing of routing and file serving.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Straightforward Express middleware; standard SPA fallback pattern"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C3",
+      "title": "Vite development server configuration and API proxying",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "Vite dev server is configured to proxy /api/* requests to the Express backend during local development.",
+      "scope": [
+        "vite.config.ts: configure server.proxy to route /api/* to http://localhost:3000 (or configurable port)",
+        "Proxy configuration: rewrite path if needed (e.g., strip prefix), changeOrigin for CORS",
+        "Dev server port: Vite on 5173 (default), Express on 3000 (configurable via PORT env var)",
+        "Environment variables: VITE_API_URL (exposed to client-side) for API calls",
+        "npm run dev: script to start both Vite and Express concurrently (or serially, design decision)"
+      ],
+      "non_goals": [
+        "Hot module reloading (HMR) advanced config (Vite default is sufficient)",
+        "Reverse proxy (simple proxy is sufficient)"
+      ],
+      "acceptance_criteria": [
+        "Vite dev server starts on port 5173",
+        "Express backend starts on port 3000",
+        "/api/* requests are proxied from Vite to Express",
+        "API responses are received correctly by frontend",
+        "npm run dev starts both servers"
+      ],
+      "dependencies": ["CC-01-C1"],
+      "labels": ["infrastructure", "frontend"],
+      "assumptions": [
+        "Vite port 5173, Express port 3000 (standard defaults)",
+        "npm concurrently or similar tool is used for parallel startup",
+        "Proxy is simple HTTP (no special WebSocket handling needed in MVP)"
+      ],
+      "split_rationale": "Dev server configuration is a distinct developer experience concern; separating allows independent setup and testing.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Standard Vite config; simple proxy setup"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C4",
+      "title": "SQLite schema migrations and versioning system",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "The database uses versioned migration files that run automatically on app startup, ensuring schema consistency across deployments.",
+      "scope": [
+        "Migration directory: /server/migrations/ with files like 001_init.sql, 002_add_streak.sql, etc.",
+        "Migration runner: Node script or library (e.g., sql.js or custom runner) that tracks applied migrations",
+        "Migration tracking: _migrations table stores { id, filename, applied_at }",
+        "On startup: app reads migration directory, compares to _migrations table, applies new migrations in order",
+        "Rollback strategy: for MVP, no rollback needed (forward-only migrations)",
+        "Migration content: CREATE TABLE, ALTER TABLE, CREATE INDEX statements (no data manipulation in migrations)"
+      ],
+      "non_goals": [
+        "Automatic rollback or down migrations",
+        "Migration templating or generation",
+        "Data migration or seed data (separate from schema migrations)"
+      ],
+      "acceptance_criteria": [
+        "Migration files are created with sequential naming (001, 002, etc.)",
+        "Migration runner reads and applies migrations on startup",
+        "_migrations table tracks applied migrations",
+        "Duplicate migrations are skipped (idempotent)",
+        "New migrations are applied without errors",
+        "Schema is consistent across deployments"
+      ],
+      "dependencies": [],
+      "labels": ["infrastructure", "database"],
+      "assumptions": [
+        "Migrations are forward-only (no rollback in MVP)",
+        "Migration runner is synchronous (runs before app starts)",
+        "All schema changes are in migrations (no manual SQL)"
+      ],
+      "split_rationale": "Schema versioning is a distinct data layer concern; separating allows focused testing of migration logic.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard migration pattern; implementation is straightforward"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C5",
+      "title": "Database seed script with idempotent data loading",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "An idempotent seed script populates the database with initial data (subjects, topics, assessments, questions, admin accounts) on deployment.",
+      "scope": [
+        "Seed script: /server/seeds/seed.js (or similar)",
+        "Data to seed: 1 subject (Mathropolis), 5 topics (Math, Science, History, Art, PE), 15 assessments (3 per district), 150 questions, 1-2 admin accounts",
+        "Idempotency: check if data exists before inserting (e.g., IF NOT EXISTS pattern or unique constraints)",
+        "Execution: npm run seed (manual) or automatic on first startup (design decision)",
+        "Error handling: log warnings if duplicates are encountered, continue with seed",
+        "Admin credentials: logged to console or written to .env.local (not committed)"
+      ],
+      "non_goals": [
+        "Test data generation (fixtures for tests are separate)",
+        "Bulk CSV import",
+        "Data deletion or reset (no truncate in seed script)"
+      ],
+      "acceptance_criteria": [
+        "Seed script inserts subjects, topics, assessments, questions, admin accounts",
+        "150 questions are inserted (or verified if already present)",
+        "Admin accounts are created (or verified if already present)",
+        "Seed is idempotent (running twice does not duplicate data)",
+        "npm run seed executes without errors",
+        "Data is queryable after seed completes"
+      ],
+      "dependencies": ["CC-01-C4"],
+      "labels": ["infrastructure", "database"],
+      "assumptions": [
+        "Seed data is provided as JSON or embedded in seed script (not CSV import)",
+        "Idempotency is achieved via unique constraints or EXISTS checks",
+        "Admin credentials are logged (not saved to repo)"
+      ],
+      "split_rationale": "Seed data loading is a distinct data initialization concern; separating allows independent testing and data management.",
+      "size_assessment": {
+        "tshirt": "L",
+        "is_too_large": false,
+        "reasons": [
+          "Data is large (150 questions), but insertion logic is straightforward"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C6",
+      "title": "SQLite WAL mode and performance tuning",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "SQLite is configured with WAL mode for better concurrency and performance; pragmas are set for safe, fast operation.",
+      "scope": [
+        "WAL mode: PRAGMA journal_mode = WAL",
+        "Synchronous: PRAGMA synchronous = NORMAL (safer than OFF, faster than FULL)",
+        "Busy timeout: PRAGMA busy_timeout = 5000 (5 seconds, allows concurrent writes to retry)",
+        "Foreign keys: PRAGMA foreign_keys = ON (enforce referential integrity)",
+        "Temp store: PRAGMA temp_store = MEMORY (optional, improve performance)",
+        "Applied on: app startup or in migration file",
+        "Verification: query PRAGMA journal_mode and confirm WAL"
+      ],
+      "non_goals": [
+        "Sharding or multi-database setup",
+        "Advanced SQLite tuning (index optimization is separate)",
+        "Query optimization"
+      ],
+      "acceptance_criteria": [
+        "WAL mode is enabled",
+        "Synchronous is set to NORMAL",
+        "Busy timeout is 5 seconds",
+        "Foreign keys are enforced",
+        "App starts without errors",
+        "PRAGMA journal_mode returns WAL"
+      ],
+      "dependencies": [],
+      "labels": ["infrastructure", "database"],
+      "assumptions": [
+        "Single-server deployment; WAL mode is sufficient (no multi-process scaling needed)",
+        "Pragmas are set on app startup or in migration (not manually each session)"
+      ],
+      "split_rationale": "SQLite tuning is a distinct performance concern; separating allows focused testing and optimization.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple pragma configuration; minimal code"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C7",
+      "title": "Process supervision with PM2 or systemd",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "The Node.js process is supervised and automatically restarted on crash; app stays up even if errors occur.",
+      "scope": [
+        "Process manager: PM2 (recommended for MVP simplicity) or systemd (for VPS deployment)",
+        "PM2 setup: npm run build && pm2 start server.js --name hero-academy",
+        "systemd setup: /etc/systemd/system/hero-academy.service file with ExecStart, Restart=always",
+        "Logs: PM2 logs or systemd journal (journalctl -u hero-academy -f)",
+        "Monitoring: PM2 monit or systemd status (optional for MVP)",
+        "Configuration: ecosystem.config.js (PM2) or .service file (systemd)"
+      ],
+      "non_goals": [
+        "Docker containerization (deployment target is VPS, not Kubernetes)",
+        "Load balancing or multi-process",
+        "Advanced monitoring or alerting"
+      ],
+      "acceptance_criteria": [
+        "Process manager is installed and configured",
+        "App starts successfully with process manager",
+        "If app crashes, it automatically restarts",
+        "Logs are accessible (PM2 or systemd journal)",
+        "Status command shows app is running"
+      ],
+      "dependencies": [],
+      "labels": ["infrastructure", "operations"],
+      "assumptions": [
+        "Deployment target is VPS or similar (not container)",
+        "PM2 or systemd is available on target machine",
+        "Single process (no clustering in MVP)"
+      ],
+      "split_rationale": "Process supervision is a distinct operations concern; separating allows independent setup based on deployment target.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard process manager setup; straightforward configuration"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C8",
+      "title": "Nightly backup and data protection strategy",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "SQLite database file is backed up nightly to object storage (AWS S3, GCS, or local backup); data loss risk is minimized.",
+      "scope": [
+        "Backup script: cron job or systemd timer that runs nightly (e.g., 2 AM UTC)",
+        "Backup destination: AWS S3, Google Cloud Storage, or local NAS (TBD based on OQ-2 deployment target)",
+        "Backup content: database.sqlite and WAL files (if any)",
+        "Retention: keep last 7 days of backups (configurable)",
+        "Verification: log backup success/failure, alert on failure (simple email or webhook)",
+        "Recovery procedure: documented steps to restore from backup (not automated in MVP)"
+      ],
+      "non_goals": [
+        "Real-time replication",
+        "Automated recovery",
+        "Backup encryption (assume HTTPS/TLS for transport)"
+      ],
+      "acceptance_criteria": [
+        "Backup script is created and scheduled",
+        "Backup job runs nightly without errors",
+        "Backup files are uploaded to storage",
+        "Multiple backups are retained (7-day history)",
+        "Success/failure is logged",
+        "Recovery procedure is documented"
+      ],
+      "dependencies": ["CC-01-C4"],
+      "labels": ["infrastructure", "operations"],
+      "assumptions": [
+        "Backup target is determined by OQ-2 (deployment environment decision)",
+        "Nightly backups are sufficient (no real-time backup needed for MVP)",
+        "Manual recovery is acceptable (no automated failover)"
+      ],
+      "split_rationale": "Backup strategy is a distinct data protection concern; separating allows independent setup and verification.",
+      "size_assessment": {
+        "tshirt": "M",
+        "is_too_large": false,
+        "reasons": [
+          "Standard backup pattern; implementation depends on backup target"
+        ]
+      }
+    },
+    {
+      "id": "CC-01-C9",
+      "title": "Environment configuration and dotenv setup",
+      "classification": "capability",
+      "issue_type": "feature",
+      "level": "child",
+      "parent_id": "CC-01",
+      "outcome": "Environment variables are managed via dotenv for local development and environment-specific configuration is applied on deployment.",
+      "scope": [
+        ".env.example: template with all required variables (committed to repo)",
+        ".env: local development settings (gitignored, created by running cp .env.example .env)",
+        ".env.production: production settings (not committed; applied on deploy)",
+        "Variables: DB_PATH, PORT, NODE_ENV, API_URL, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, etc.",
+        "Loading: dotenv package in server.js on startup",
+        "Client-side: VITE_API_URL and similar (prefixed with VITE_) for Vite to expose",
+        "Validation: check required variables on startup, error if missing"
+      ],
+      "non_goals": [
+        "Secrets manager (AWS Secrets Manager, Vault) — dotenv is sufficient for MVP",
+        "Dynamic configuration without restart",
+        "Config file in YAML or TOML (dotenv is sufficient)"
+      ],
+      "acceptance_criteria": [
+        ".env.example lists all required variables",
+        ".env (or .env.local) is gitignored",
+        "dotenv loads variables on startup",
+        "APP validates required variables and errors if missing",
+        "DB_PATH, PORT, NODE_ENV, JWT_SECRET are configurable",
+        "Client-side API URL is configurable via VITE_API_URL"
+      ],
+      "dependencies": [],
+      "labels": ["infrastructure", "configuration"],
+      "assumptions": [
+        "dotenv is the dependency for loading .env files",
+        "Client-side Vite exposes VITE_* prefixed variables automatically",
+        "Production .env is provided by deployment process (not committed)"
+      ],
+      "split_rationale": "Environment configuration is foundational for all environments; separating ensures it's established early.",
+      "size_assessment": {
+        "tshirt": "S",
+        "is_too_large": false,
+        "reasons": [
+          "Simple dotenv setup; straightforward variable management"
+        ]
+      }
+    }
+  ]
+}

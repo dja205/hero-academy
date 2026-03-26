@@ -1,0 +1,568 @@
+{
+  "project": "hero-academy",
+  "run": "2026-03-26-gh1-mvp-build-hero-academy-11-learning-platform",
+  "generated_at": "2026-03-26T23:13:52.724Z",
+  "risks": [
+    {
+      "id": "RISK-01",
+      "category": "data",
+      "description": "SQLite is not suited for multi-process or high-concurrency writes. Single-server constraint mitigates this for MVP, but any horizontal scaling is blocked. A disk failure with no recent backup means total data loss.",
+      "severity": "medium",
+      "recommendation": "Enable WAL mode on startup. Document PostgreSQL migration path explicitly. Schedule nightly SQLite backup to object storage (S3/R2/Backblaze). Validate backup restore procedure before go-live."
+    },
+    {
+      "id": "RISK-02",
+      "category": "infrastructure",
+      "description": "Deployment target is unresolved (OQ-2). The choice of VPS vs Railway vs Render vs Fly.io materially affects how SQLite persistence is handled (persistent volume vs ephemeral filesystem), how process supervision is configured, and whether nightly backups are feasible.",
+      "severity": "high",
+      "recommendation": "Resolve deployment target before any infrastructure work begins (CC-01). If Railway or Render: confirm persistent volume availability. If Fly.io: confirm SQLite volume mount. VPS (DigitalOcean/Hetzner) is the most flexible option for SQLite persistence."
+    },
+    {
+      "id": "RISK-03",
+      "category": "security",
+      "description": "4-digit PIN is low entropy (10,000 possibilities). Without rate limiting, a brute-force attack per child_id is feasible in under an hour. Architecture mandates rate-limiting but the implementation (in-memory vs persistent store) has not been finalised.",
+      "severity": "high",
+      "recommendation": "Implement rate-limiting before any child-facing endpoint is deployed. In-memory rate-limit (express-rate-limit) is acceptable for single-server MVP. Key by child_id + source IP. 5 attempts → 10-minute lockout. Log all lockout events."
+    },
+    {
+      "id": "RISK-04",
+      "category": "security",
+      "description": "Child accounts hold data for minors (under 13). UK GDPR and potentially COPPA (if any US users) impose strict obligations on data minimisation, parental consent, and right-to-erasure. No data controller has been identified and no privacy policy exists.",
+      "severity": "critical",
+      "recommendation": "Identify the data controller before public launch (OQ-10). Commission a basic privacy policy covering: data collected, retention periods, parental consent mechanism, right-to-erasure process. Do not launch publicly without this. Track as CC-02 compliance item."
+    },
+    {
+      "id": "RISK-05",
+      "category": "security",
+      "description": "JWT tokens have no server-side invalidation mechanism by default. If a parent account is suspended by an admin, the parent's existing access tokens remain valid for up to 15 minutes. Refresh tokens have a 7-day lifetime if not rotated.",
+      "severity": "medium",
+      "recommendation": "Implement a token denylist table (parent_id + revoked_at) checked during refresh token validation. Admin suspend action must add parent to denylist. Short access token TTL (15 min) limits exposure window for access tokens."
+    },
+    {
+      "id": "RISK-06",
+      "category": "performance",
+      "description": "Framer Motion animations (city fly-in, district zoom, star reveal, power-up flash) may cause jank on low-end Android devices (sub-£150 phones common in UK family market). The city map is the core engagement screen — poor performance here directly harms retention.",
+      "severity": "medium",
+      "recommendation": "Test on Chrome DevTools mobile throttle (mid-tier Android profile) during development. Limit simultaneous animations. Use layoutId transitions sparingly. Implement prefers-reduced-motion fallbacks. Consider a simplified city map for devices that report slow frame rates."
+    },
+    {
+      "id": "RISK-07",
+      "category": "data",
+      "description": "150 seed questions at 11+ standard need to be accurate, curriculum-aligned, and free from errors. Incorrect questions or wrong correct_index values will directly harm children's learning experience and erode parent trust.",
+      "severity": "high",
+      "recommendation": "Seed questions must be reviewed by a subject matter expert (11+ tutor or curriculum specialist) before the seed script is finalised. Do not rely solely on AI-generated questions without human review. Include explanations for all questions."
+    },
+    {
+      "id": "RISK-08",
+      "category": "architecture",
+      "description": "Attempt submission is synchronous and triggers gamification side-effects in-process. If the gamification service (XP, rank, streak, achievements) throws an error, the attempt result could be lost or partially persisted, leading to data inconsistency.",
+      "severity": "medium",
+      "recommendation": "Wrap the attempt submission + gamification trigger in a database transaction. Ensure gamification failures do not roll back the attempt record itself — log the failure and return the score result. Add monitoring for gamification errors."
+    },
+    {
+      "id": "RISK-09",
+      "category": "ux",
+      "description": "The avatar config JSON schema (avatar_config in children table) is undefined. Both the frontend avatar selection component and the DB seed script depend on this schema. Building either before the schema is agreed creates rework risk.",
+      "severity": "high",
+      "recommendation": "Define and agree the avatar_config schema immediately (OQ-5). Recommended minimal schema: { costume: 1-3, mask: 1-2 }. Document in a shared types file before BC-02-C1 or CC-01-C5 begin."
+    },
+    {
+      "id": "RISK-10",
+      "category": "architecture",
+      "description": "The attempts table does not have a separate attempt_uuid column in the data model as defined in the request spec. The architecture mandates attempt deduplication via client-generated UUID (AD-8), but the data model shows id as the only UUID field. If id is the client-generated UUID, this must be explicit; if not, a separate column is needed.",
+      "severity": "medium",
+      "recommendation": "Confirm whether attempts.id is the client-generated deduplication UUID or a server-generated ID. If server-generated, add an attempt_uuid column with a unique constraint. Resolve before BC-04-C6 is built."
+    },
+    {
+      "id": "RISK-11",
+      "category": "data",
+      "description": "The question_ids field in the assessments table is a JSON array, not a foreign key junction table. This makes it impossible to query 'which assessments use this question?' at the DB level, and prevents referential integrity enforcement.",
+      "severity": "low",
+      "recommendation": "For MVP this is acceptable given the low admin volume. Document the trade-off. Post-MVP: migrate to an assessment_questions junction table. Ensure the admin soft-delete flow checks if a question is in use before deactivating."
+    },
+    {
+      "id": "RISK-12",
+      "category": "ux",
+      "description": "District unlock logic is ambiguous across two artifacts. Architecture says 'locked districts unlock after completing prior district' but the capability slices say 'unlock threshold based on XP milestones'. These are incompatible unlock models.",
+      "severity": "high",
+      "recommendation": "Resolve district unlock model before BC-02-C2 (city map) is built. Recommend: prior district completion (≥1 mission at ≥1 star) unlocks next district. XP-gating is more complex and less intuitive for young children. Product must decide."
+    },
+    {
+      "id": "RISK-13",
+      "category": "architecture",
+      "description": "Email sending is required for parent registration (verification) and password reset. No email provider is specified in the architecture or tech stack. Nodemailer with SMTP, SendGrid, Resend, or Postmark are all viable, but each has different setup, cost, and deliverability characteristics.",
+      "severity": "medium",
+      "recommendation": "Choose and configure an email provider before BC-01-C1 (parent registration) is built. Resend or Postmark recommended for deliverability. Nodemailer + Gmail SMTP is viable for MVP development but not for production. Treat as a discovery item."
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OQ-01",
+      "category": "architecture",
+      "description": "Is the frontend a single Vite SPA with code-split portal sub-trees, or three separate builds? AD-7 in the architecture doc made this decision (single SPA), but it has not been formally confirmed by all stakeholders.",
+      "severity": "high",
+      "recommendation": "Confirm AD-7 is accepted. Single SPA is the right call: shared auth client, shared API layer, single deployment artifact. Close this question and document in decision log."
+    },
+    {
+      "id": "OQ-02",
+      "category": "infrastructure",
+      "description": "What is the deployment target? VPS (DigitalOcean/Hetzner), Railway, Render, or Fly.io? This directly affects SQLite persistence strategy, process supervision, backup configuration, and environment variable management.",
+      "severity": "high",
+      "recommendation": "Product/Loki must decide before CC-01 infrastructure work begins. Recommend: Hetzner VPS (€5/mo) for full SQLite persistence control, or Railway with a persistent volume if managed infrastructure is preferred."
+    },
+    {
+      "id": "OQ-03",
+      "category": "product",
+      "description": "Is email verification blocking (child cannot be added until parent verifies) or non-blocking for MVP? The UX design assumes non-blocking; BC-03-C1 assumes blocking. These are contradictory and affect the auth flow.",
+      "severity": "high",
+      "recommendation": "Recommend non-blocking for MVP to reduce onboarding friction. Mark email_verified = false on registration; allow access immediately. Prompt verification in parent dashboard with a banner. Block password reset (not core access) until verified."
+    },
+    {
+      "id": "OQ-04",
+      "category": "product",
+      "description": "What is the question ordering model per attempt: fixed (same order every time) or randomised? OQ-6 in architecture. This affects the attempt scoring logic and whether the seed data needs to specify question order.",
+      "severity": "high",
+      "recommendation": "Recommend fixed ordering for MVP: simpler to implement, predictable for children, easier to debug. Randomisation can be added post-MVP as an assessment-level flag."
+    },
+    {
+      "id": "OQ-05",
+      "category": "architecture",
+      "description": "What is the avatar_config JSON schema? Both the frontend avatar components and the DB seed script depend on this. Currently assumed as { costume: 1-3, mask: 1-2 } but not formally defined.",
+      "severity": "high",
+      "recommendation": "Define immediately. Recommended schema: { \"costume\": number (1-3), \"mask\": number (1-2) }. Document in /server/src/types/avatar.ts or equivalent shared types file. Agree before any avatar-related code begins."
+    },
+    {
+      "id": "OQ-06",
+      "category": "product",
+      "description": "How are admin accounts created? Seed script only, or is there a super-admin invite flow? The architecture notes this as unresolved (OQ-8). Admin accounts created only via seed mean no way to add admins post-deployment without SSH access.",
+      "severity": "medium",
+      "recommendation": "For MVP: seed script only is acceptable. Add a comment in seed script describing how to add new admins (manual DB insert or re-run with new credentials). Document this as a known limitation. Post-MVP: basic invite-by-email admin creation."
+    },
+    {
+      "id": "OQ-07",
+      "category": "product",
+      "description": "What is the district unlock model? Architecture references prior district completion; capability slices reference XP thresholds. These are incompatible. The city map component (BC-02-C2) cannot be built without a definitive answer.",
+      "severity": "high",
+      "recommendation": "Product must decide. Prior district completion (sequential unlock) is simpler and more appropriate for 8-10 year olds who benefit from clear progression. XP-gating is more flexible post-MVP."
+    },
+    {
+      "id": "OQ-08",
+      "category": "product",
+      "description": "Can a child replay a mission immediately after completing it, or is there a cooldown? UX design assumes no cooldown. If 'Train Again' is always available, what prevents a child from grinding XP on the easiest mission?",
+      "severity": "low",
+      "recommendation": "For MVP: no cooldown, but cap XP earned from replays (e.g. only award XP on first completion of each star tier per mission). Document the XP cap rule before BC-04-C4 (star/XP computation) is built."
+    },
+    {
+      "id": "OQ-09",
+      "category": "product",
+      "description": "What email service provider will be used for parent email verification and password reset? This is not specified anywhere in the architecture or tech stack.",
+      "severity": "medium",
+      "recommendation": "Choose before BC-01-C1 begins. Resend.com (generous free tier, great deliverability) or Postmark recommended. Add SMTP credentials as required environment variables. Stub the email service in tests."
+    },
+    {
+      "id": "OQ-10",
+      "category": "legal",
+      "description": "Who is the nominated data controller under UK GDPR? A privacy policy and data retention policy are legal requirements before public launch. No information on this has been provided.",
+      "severity": "high",
+      "recommendation": "Identify the data controller (product owner / company) before marketing or public launch. Draft a minimal privacy policy covering: personal data collected (parent email, child hero name + PIN hash), retention policy, deletion process, contact details. This is not an MVP build blocker but is a launch blocker."
+    },
+    {
+      "id": "OQ-11",
+      "category": "product",
+      "description": "The request spec shows 10 questions per assessment (and the 150 seed question count is based on 10 questions × 15 assessments). However, the attempts table schema shows a max_score column. Is max_score always 10, or can assessments have variable question counts?",
+      "severity": "low",
+      "recommendation": "For MVP: fix all assessments at 10 questions. max_score is always 10. Document this constraint in the data model. Variable-length assessments are a post-MVP feature."
+    },
+    {
+      "id": "OQ-12",
+      "category": "architecture",
+      "description": "The attempts table has a completed_at DATETIME column but no started_at column. duration_seconds is stored, but without started_at, the server cannot independently verify the duration (a client could submit any duration value).",
+      "severity": "low",
+      "recommendation": "For MVP: trust client-reported duration_seconds (used for analytics only, not gameplay). Add server-side started_at if time verification becomes important post-MVP. Do not use duration_seconds for any security-sensitive logic."
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASSM-01",
+      "category": "architecture",
+      "description": "The API and frontend are served from the same origin in production. Express serves built static assets. No CORS configuration required.",
+      "severity": "low",
+      "recommendation": "Verify in deployment. If a CDN is ever added in front of the frontend, CORS configuration will be required. Document this assumption explicitly in the deployment README."
+    },
+    {
+      "id": "ASSM-02",
+      "category": "auth",
+      "description": "Child JWT carries a parent_id claim to enable subscription gating without an extra DB lookup. This couples the child's session to the parent's subscription state at login time.",
+      "severity": "medium",
+      "recommendation": "Ensure subscription status changes (post-MVP) invalidate active child sessions or re-validate on each attempt submission. The parent_id claim is correct but the subscription plan should be re-fetched from DB on each gating check, not cached in the JWT."
+    },
+    {
+      "id": "ASSM-03",
+      "category": "product",
+      "description": "All MVP users are on the free plan. Subscription gating is stubbed to always return 'free'. No real gating enforcement occurs in MVP.",
+      "severity": "low",
+      "recommendation": "Confirmed as correct for MVP. The gating logic should still read from the subscriptions table (not hardcoded) to make post-MVP activation trivial."
+    },
+    {
+      "id": "ASSM-04",
+      "category": "gamification",
+      "description": "Rank thresholds (Recruit 0-99, Sidekick 100-499, Hero 500-1499, Superhero 1500+) are defined in the request spec. XP per star tier is not explicitly defined. BC-05 capability slices assume '1 star = 10 XP' as a placeholder.",
+      "severity": "medium",
+      "recommendation": "Define the full XP schedule before BC-04-C4 and BC-05-C1 are built: XP per star tier (e.g. 1★=10, 2★=20, 3★=30), XP cap on replays, XP for first completion bonus. Document in a constants file, not hardcoded."
+    },
+    {
+      "id": "ASSM-05",
+      "category": "gamification",
+      "description": "Achievement definitions (5 badges: First Mission, Perfect Power, Hot Streak, District Champion, Zone Master) are defined in the request spec. The trigger conditions for each are assumed but not formally specified for the backend evaluation logic.",
+      "severity": "medium",
+      "recommendation": "Formally specify achievement trigger conditions before BC-05-C4 (achievement evaluation) is built. Example: 'District Champion' = all 3 missions in a district completed at ≥1 star. Edge case: what if a child completes missions in non-sequential order?"
+    },
+    {
+      "id": "ASSM-06",
+      "category": "ux",
+      "description": "The power meter is purely cosmetic (no auto-advance on expiry). This is stated in multiple artifacts. Changing this post-build would require significant rework of the mission runner interaction model.",
+      "severity": "low",
+      "recommendation": "Confirm with product that power meter is cosmetic for MVP. Document this clearly. If timed assessments are ever needed, they should be introduced as a new assessment type, not a modification to the existing power meter."
+    },
+    {
+      "id": "ASSM-07",
+      "category": "auth",
+      "description": "Email verification for parents is assumed non-blocking in UX design (parent can use the app immediately after registration) but blocking in BC-03-C1 capability spec. This is a direct contradiction.",
+      "severity": "high",
+      "recommendation": "See OQ-03. This assumption must be resolved and one source of truth established. The UX design (non-blocking) is the more user-friendly default for MVP."
+    },
+    {
+      "id": "ASSM-08",
+      "category": "data",
+      "description": "The seed script produces exactly 150 questions at 11+ standard (10 per assessment × 15 assessments). Writing 150 accurate, curriculum-aligned questions is a non-trivial content production task not represented in any capability slice.",
+      "severity": "high",
+      "recommendation": "Assign content production as a standalone task with explicit owner. Questions must be reviewed by an 11+ subject matter expert. Allocate at least 1-2 days for SME review. Do not block development on seed data — use placeholder questions for development, replace before launch."
+    },
+    {
+      "id": "ASSM-09",
+      "category": "architecture",
+      "description": "HS256 is used for JWT signing (single-secret symmetric). This is acceptable for single-server deployment but cannot support multi-server token validation without sharing the secret.",
+      "severity": "low",
+      "recommendation": "Document HS256 as an MVP constraint. Post-MVP (multi-server): migrate to RS256 (asymmetric) so the public key can be distributed without exposing the signing secret."
+    },
+    {
+      "id": "ASSM-10",
+      "category": "ux",
+      "description": "The parent portal shows a 'Switch to Child View' / 'Play as Hero' button to hand off the device to the child. This is mentioned in UX design (UX-OQ-10) but not represented in any backend capability slice.",
+      "severity": "low",
+      "recommendation": "This is a pure frontend routing action (parent → child PIN screen pre-selecting a child's avatar). No backend change needed. Ensure BC-02-C1 (child login UI) supports a pre-selected child_id query param for this flow."
+    }
+  ],
+  "external_dependencies": [
+    {
+      "id": "EXT-01",
+      "category": "payments",
+      "description": "Stripe — subscription lifecycle management, Checkout session creation, webhook delivery (post-MVP). Deferred for MVP but architecture seam is defined. Risk: Stripe API changes, webhook delivery failures, signature verification complexity.",
+      "severity": "low",
+      "recommendation": "MVP stub is correct: webhook endpoint exists, returns 200, logs event. Do not call any Stripe SDK in MVP. Ensure Stripe SDK is added to package.json but not instantiated until post-MVP billing is activated. Review Stripe's UK Strong Customer Authentication (SCA) requirements before activating billing."
+    },
+    {
+      "id": "EXT-02",
+      "category": "email",
+      "description": "Email provider (unspecified) — required for parent email verification and password reset. No provider is named in any artifact. This is a dependency for BC-01-C1 (parent registration) which is a blocker for the parent portal.",
+      "severity": "high",
+      "recommendation": "Choose a provider immediately. Resend.com recommended: free tier covers MVP volume, simple REST API, good deliverability. Fallback: Postmark or SendGrid. Stub the email send in test environments."
+    },
+    {
+      "id": "EXT-03",
+      "category": "hosting",
+      "description": "Deployment platform (unresolved — OQ-02). Affects SQLite file persistence, process supervision, SSL termination, and backup strategy. All infrastructure work is blocked until this is resolved.",
+      "severity": "high",
+      "recommendation": "Decide before CC-01 work begins. For SQLite: needs a persistent volume (not ephemeral filesystem). Hetzner VPS or DigitalOcean Droplet with attached volume are the most reliable options. Railway and Render both support persistent volumes but with more constraints."
+    },
+    {
+      "id": "EXT-04",
+      "category": "object-storage",
+      "description": "Object storage for nightly SQLite backups (S3, Cloudflare R2, or Backblaze B2). Architecture mandates nightly backup but no provider is specified.",
+      "severity": "medium",
+      "recommendation": "Cloudflare R2 recommended (S3-compatible, no egress fees, free tier adequate for SQLite backups). Backblaze B2 is a cost-effective alternative. Implement backup as a cron script running nightly on the server."
+    },
+    {
+      "id": "EXT-05",
+      "category": "cdn-assets",
+      "description": "Hero avatar images, district building assets, and city map graphics are referenced throughout UX design but no asset pipeline or source is specified. The animated city map is a core engagement mechanic.",
+      "severity": "medium",
+      "recommendation": "Identify asset source before BC-02-C2 (city map) begins. Options: commission from a designer, license stock assets, or generate with AI image tools. Assets must be SVG or optimised PNG for mobile performance. Establish asset delivery strategy (bundled with app vs CDN-hosted)."
+    },
+    {
+      "id": "EXT-06",
+      "category": "monitoring",
+      "description": "No application monitoring, error tracking, or uptime alerting is specified. For a production app serving children, silent failures in the attempt submission or gamification chain could go undetected.",
+      "severity": "low",
+      "recommendation": "Add Sentry (free tier) for error tracking before launch. Add a simple uptime monitor (UptimeRobot free tier). These are minimal but materially reduce the risk of silent production failures. Not an MVP build blocker but should be configured before go-live."
+    }
+  ],
+  "complexity_hotspots": [
+    {
+      "id": "HOT-01",
+      "category": "frontend",
+      "description": "City map component (BC-02-C2) is the highest-complexity frontend component. It requires: a fixed 2D layout with 5 district buildings, animated zone zoom transitions (Framer Motion layoutId), dynamic unlock state per district, idle ambient animations, and progress visualisation — all on a mobile viewport (375px).",
+      "severity": "high",
+      "recommendation": "Start with a static city map layout (no animations) and layer in animations iteratively. Use SVG for the city map to enable responsive scaling. Isolate the animation layer so it can be disabled for testing. Allocate the most experienced frontend developer to this component."
+    },
+    {
+      "id": "HOT-02",
+      "category": "frontend",
+      "description": "Mission complete screen requires a staggered animation sequence: score reveal → star animations (one by one, 200ms apart) → XP ticker → rank progress bar update → achievement unlock toast(s). Sequencing multiple Framer Motion animations in a single screen is prone to timing bugs.",
+      "severity": "medium",
+      "recommendation": "Implement the animation sequence as a state machine (idle → scoring → stars → xp → achievements → done). Each state drives the visible UI. Use Framer Motion's AnimatePresence and variants system. Test on mobile with animations enabled and with prefers-reduced-motion."
+    },
+    {
+      "id": "HOT-03",
+      "category": "backend",
+      "description": "The attempt submission handler (BC-04-C3) is the most complex backend endpoint: it must validate the attempt UUID (deduplication), score all answers, compute stars, persist the attempt record, trigger XP accumulation, trigger rank evaluation, trigger streak update, and evaluate all achievement conditions — all within a single synchronous request.",
+      "severity": "high",
+      "recommendation": "Wrap in a DB transaction. Keep the gamification service interface clean (single function call with attempt result, returns XP delta + new rank + new achievements). Add comprehensive unit tests for each component individually. Log all errors without rolling back the attempt record."
+    },
+    {
+      "id": "HOT-04",
+      "category": "backend",
+      "description": "Achievement evaluation (BC-05-C4) requires querying multiple tables (attempts, children, topics) to evaluate conditions like 'all missions in a district completed'. This is a N+1 query risk if not designed carefully.",
+      "severity": "medium",
+      "recommendation": "Pre-fetch required data in a single query before evaluating achievement conditions. Cache child stats for the duration of the request. Consider a dedicated child_stats view or computed stats columns to avoid repeated aggregation queries."
+    },
+    {
+      "id": "HOT-05",
+      "category": "frontend",
+      "description": "The AuthStore (Zustand) must manage three completely different auth flows (child in-memory, parent HttpOnly cookie + refresh, admin access-token-only) within a single state store, across a code-split SPA with different portal sub-trees.",
+      "severity": "medium",
+      "recommendation": "Design the AuthStore with explicit role-typed state slices. Child state: { token: string | null, childId: string | null }. Parent state: { token: string | null, parentId: string | null }. Admin state: { token: string | null }. Use separate store slices or a discriminated union to prevent cross-contamination."
+    },
+    {
+      "id": "HOT-06",
+      "category": "data",
+      "description": "Writing 150 accurate, pedagogically-sound 11+ standard questions with correct answers, distractors, and explanations is a significant content production task. This is not a code complexity issue but a project complexity issue that is often underestimated.",
+      "severity": "high",
+      "recommendation": "Treat as a separate work stream. Assign to a content owner. Use placeholder questions during development. Implement a question review workflow in the admin portal (even if simple: active/inactive flag) so questions can be published after review. Do not launch with unreviewed content."
+    },
+    {
+      "id": "HOT-07",
+      "category": "frontend",
+      "description": "The child portal must work correctly and feel engaging at 375px on a mobile browser. Three interaction patterns co-exist: swipe carousel (avatar selection), tap grid (PIN pad), and animated map zoom (city map). Each has distinct touch event handling requirements.",
+      "severity": "medium",
+      "recommendation": "Test all three interaction patterns on real mobile devices early (not just browser emulation). Use touch-action CSS property to avoid conflicts between scroll and tap. Ensure PIN pad uses type=tel or a custom numeric keyboard to avoid full QWERTY on mobile."
+    },
+    {
+      "id": "HOT-08",
+      "category": "backend",
+      "description": "The DB seed script must produce 150 11+ standard questions that are curriculum-aligned across 5 topics (Number Tower, Fraction Falls, Shape City, Sequence Bridge, Problem Palace) at mixed difficulty (easy/medium/hard). This is the most content-heavy single task in the project.",
+      "severity": "high",
+      "recommendation": "Structure the seed script to load questions from a separate JSON data file (not inline in the script). This separates content production from engineering. The JSON file can be reviewed and updated by non-engineers without touching code."
+    }
+  ],
+  "deferred_items": [
+    {
+      "id": "DEF-01",
+      "category": "payments",
+      "description": "Stripe Checkout, subscription upgrade/downgrade UI, webhook event processing, billing history, and the Hero plan (£9.99/mo, all content, up to 4 children). Architecture seam exists (stubbed webhook endpoint + subscriptions table).",
+      "severity": "low",
+      "recommendation": "Revisit when MVP has active users and product-market fit is validated. Before activating: implement Stripe webhook signature verification, idempotency check on stripe_event_id, and subscription state machine. Review UK SCA requirements."
+    },
+    {
+      "id": "DEF-02",
+      "category": "content",
+      "description": "Additional Hero Zones: Wordsworth Tower (English), Logic Labs (Verbal Reasoning), Pattern HQ (Non-Verbal Reasoning), Story Forge (Creative Writing). Zones are visible but locked on the city map.",
+      "severity": "low",
+      "recommendation": "Revisit after Mathropolis MVP is validated. Each zone requires: topic definitions, 150+ questions per zone, district assets, and potentially different question types (e.g. Story Forge may need free-text input, not multiple choice)."
+    },
+    {
+      "id": "DEF-03",
+      "category": "ux",
+      "description": "Sound effects (toggleable audio for interactions, correct/incorrect feedback, mission complete fanfare). Mentioned in the original vision, explicitly deferred in UX non-goals.",
+      "severity": "low",
+      "recommendation": "Revisit post-MVP if user research shows sound is valued. Implement as a parent-controllable setting (not child-controlled) to avoid classroom/library embarrassment scenarios."
+    },
+    {
+      "id": "DEF-04",
+      "category": "ux",
+      "description": "Extended avatar customisation: colour picker, accessory selection, custom emblem. MVP has 6 preset hero styles (3 costumes × 2 masks) only.",
+      "severity": "low",
+      "recommendation": "Revisit if avatar personalisation is a retention driver (user research). The avatar_config JSON schema should be designed to be extensible from day one (avoid hardcoding to just costume + mask)."
+    },
+    {
+      "id": "DEF-05",
+      "category": "architecture",
+      "description": "PWA / offline mode. Not in spec, but mobile-first target raises the question. No service worker, no offline caching, no install-to-homescreen for MVP.",
+      "severity": "low",
+      "recommendation": "Revisit if offline usage (e.g. on commute) is a user request. PWA would require careful handling of attempt submission (queue offline attempts and sync on reconnect), which is non-trivial. Do not add service worker until explicitly needed."
+    },
+    {
+      "id": "DEF-06",
+      "category": "product",
+      "description": "Adaptive difficulty: dynamic adjustment of question difficulty based on child performance. MVP has fixed difficulty per assessment.",
+      "severity": "low",
+      "recommendation": "Revisit post-MVP with performance data. Adaptive difficulty requires a difficulty model, sufficient question bank depth per topic at each difficulty level, and backend scoring intelligence. Seed data should include a mix of easy/medium/hard to support this future capability."
+    },
+    {
+      "id": "DEF-07",
+      "category": "product",
+      "description": "Notifications: email streak reminders, push notifications, achievement notifications. Not in MVP.",
+      "severity": "low",
+      "recommendation": "Revisit when email infrastructure is in place. Streak reminders are high-value for retention. Build on top of the email service chosen for verification/password-reset (EXT-02)."
+    },
+    {
+      "id": "DEF-08",
+      "category": "compliance",
+      "description": "Cookie consent banner, right-to-erasure automated workflow, COPPA compliance documentation. Manual right-to-erasure is acceptable for MVP.",
+      "severity": "medium",
+      "recommendation": "Track in CC-02. Cookie consent banner is required before any analytics or third-party tracking is added. If no third-party cookies are used in MVP (no analytics, no ads), a banner may not be legally required — but confirm with legal counsel."
+    },
+    {
+      "id": "DEF-09",
+      "category": "architecture",
+      "description": "PostgreSQL migration path. SQLite is the MVP database. Architecture documents the migration path to PostgreSQL but does not define it in detail.",
+      "severity": "low",
+      "recommendation": "Document the migration plan before the first production data is written: schema compatibility notes, migration tooling (e.g. Prisma or Drizzle for schema portability), and trigger conditions (e.g. user count > 500 or write contention observed). Do not wait until migration is urgent."
+    },
+    {
+      "id": "DEF-10",
+      "category": "product",
+      "description": "Leaderboards and social comparison features. Explicitly excluded from MVP. No social features of any kind.",
+      "severity": "low",
+      "recommendation": "Revisit cautiously. For 8-10 year olds, leaderboards can be demotivating for lower performers. If implemented, consider class/cohort-relative leaderboards (not global) and ensure GDPR compliance for any cross-user data exposure."
+    },
+    {
+      "id": "DEF-11",
+      "category": "ux",
+      "description": "Deep-link: parent can hand child directly to a specific mission URL. Mentioned in UX as a future feature. Not MVP.",
+      "severity": "low",
+      "recommendation": "Design the child portal routing to support deep-linking from day one (e.g. /child/mission/:assessmentId). This is cheap to support in the router even if not exposed as a feature in MVP. The 'Play as Hero' handoff button (UX-OQ-10) is a precursor to this."
+    }
+  ],
+  "security_notes": [
+    {
+      "id": "SEC-01",
+      "category": "child-accounts",
+      "description": "Children are minors. Under UK GDPR (and COPPA for any US users), collecting data about children under 13 requires verifiable parental consent. The parent registration + child setup flow implicitly provides this consent, but it must be explicit in the Terms of Service and Privacy Policy.",
+      "severity": "critical",
+      "recommendation": "Add explicit consent language to the parent registration flow: 'By creating a child profile, you confirm you are the parent or guardian of the child and consent to the collection of their learning data as described in our Privacy Policy.' Legal review required before launch."
+    },
+    {
+      "id": "SEC-02",
+      "category": "pin-auth",
+      "description": "4-digit PIN is bcrypt-hashed in the database. This is correct. However, the PIN pad UI must not expose the PIN in DOM attributes, browser autocomplete, or local storage. Children may share devices with siblings; PINs must not be pre-filled.",
+      "severity": "medium",
+      "recommendation": "Set autocomplete=off on the PIN input. Clear PIN state from React component memory on unmount and on failed login. Ensure the PIN is never logged in server-side request logs (mask the body or exclude the pin field from logging)."
+    },
+    {
+      "id": "SEC-03",
+      "category": "data-minimisation",
+      "description": "Child records must store only: hero_name, pin_hash, avatar_config, xp, rank. Real name (name field in children table) is PII and may not be necessary for the learning experience. Consider whether the real name needs to be stored at all.",
+      "severity": "medium",
+      "recommendation": "Review whether children.name (real name) is required. If it is only used for parent identification, it could be stored encrypted or omitted from the DB entirely (parent manages the mapping). At minimum, ensure children.name never appears in API responses consumed by the child portal."
+    },
+    {
+      "id": "SEC-04",
+      "category": "api-security",
+      "description": "The attempt submission API (POST /api/v1/attempts) is the highest-value endpoint to abuse: it awards XP and achievements. While attempt deduplication via UUID prevents replay attacks, a determined actor could submit valid attempts with fabricated answers at high speed.",
+      "severity": "medium",
+      "recommendation": "Rate-limit the attempt submission endpoint per child (e.g. max 1 attempt per assessment per 5 minutes, or max 20 attempts per hour per child). Log unusually fast completion times (duration_seconds < 30 for a 10-question assessment) as a flag for review."
+    },
+    {
+      "id": "SEC-05",
+      "category": "admin-security",
+      "description": "Admin accounts are created via seed script only. The admin JWT is described as access-token-only (no refresh token) in BC-01-C4. If an admin token is compromised, it provides full read/write access to all user data, questions, and assessments until it expires (15 minutes).",
+      "severity": "medium",
+      "recommendation": "Add IP allowlisting for the admin portal in production (restrict /admin routes to known IP ranges). Add audit logging for all admin mutations (create/edit/delete questions, suspend/unsuspend users). Consider a 2FA requirement for admin login post-MVP."
+    },
+    {
+      "id": "SEC-06",
+      "category": "jwt",
+      "description": "JWT secret must be a cryptographically random string, stored in an environment variable, never committed to source control. If the secret is leaked, all tokens across all users can be forged.",
+      "severity": "high",
+      "recommendation": "Generate JWT secret with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\". Store in .env (gitignored). Rotate the secret if ever exposed (this will invalidate all active sessions — document the impact). Use a secrets manager (e.g. Doppler, AWS Secrets Manager) in production."
+    },
+    {
+      "id": "SEC-07",
+      "category": "https",
+      "description": "The HttpOnly Secure flag on refresh token cookies is only effective over HTTPS. In development, HTTPS is not used. The Secure flag should be set conditionally (NODE_ENV === 'production').",
+      "severity": "medium",
+      "recommendation": "Set cookie options: secure: process.env.NODE_ENV === 'production'. Ensure production deployment enforces HTTPS at the reverse proxy or platform level. Consider adding HSTS header in production."
+    },
+    {
+      "id": "SEC-08",
+      "category": "input-validation",
+      "description": "The question text, options, and explanation fields accept arbitrary text input via the admin portal. If admin input is rendered unsanitised in the child portal (e.g. via dangerouslySetInnerHTML), XSS is possible.",
+      "severity": "medium",
+      "recommendation": "Render all question text, options, and explanations as text content (not innerHTML) in React. This is the default React behaviour — explicitly avoid dangerouslySetInnerHTML for these fields. Add server-side validation to reject HTML tags in question content."
+    }
+  ],
+  "ux_notes": [
+    {
+      "id": "UX-01",
+      "category": "child-age-group",
+      "description": "8-10 year olds have shorter attention spans, lower reading stamina, and stronger preference for visual reward than adult users. The mission runner must deliver feedback within 400ms and the mission complete screen must feel celebratory, not clinical.",
+      "severity": "high",
+      "recommendation": "Prioritise animation quality on the mission complete screen. Every star award should feel earned. Use large, high-contrast text. Minimise the number of words per screen. Pilot test with 2-3 real children in the target age range before launch if possible."
+    },
+    {
+      "id": "UX-02",
+      "category": "accessibility",
+      "description": "Colour-only feedback (green/red for correct/incorrect) excludes children with colour vision deficiency (~8% of males). The UX design mandates icon accompaniment (✓/✗) but this must be enforced in implementation.",
+      "severity": "high",
+      "recommendation": "Add explicit accessibility acceptance criteria to all answer feedback tickets: correct answer must show ✓ icon + green background; incorrect must show ✗ icon + red background. Test with a colour-blindness simulation tool (e.g. Chromatic or browser DevTools accessibility overlay) before release."
+    },
+    {
+      "id": "UX-03",
+      "category": "accessibility",
+      "description": "The prefers-reduced-motion media query must be respected for all Framer Motion animations. Children with vestibular disorders or motion sensitivity may experience discomfort from the city fly-in and district zoom transitions.",
+      "severity": "high",
+      "recommendation": "Create a custom React hook (useReducedMotion) that reads the media query and passes a flag to all animation components. City map: fade-in instead of zoom. Mission complete: instant star reveal instead of stagger. This is not optional — treat as an accessibility requirement."
+    },
+    {
+      "id": "UX-04",
+      "category": "reading-level",
+      "description": "Question text must be at 11+ standard but explanation text should be pitched at Year 5/6 reading level. If explanations are too complex, children will not benefit from the corrective feedback that is central to the learning model.",
+      "severity": "medium",
+      "recommendation": "Include reading level as a content review criterion. Use short sentences in explanations. Avoid technical jargon. Include a visual example where possible (e.g. for fraction explanations, use a diagram reference). Review explanations as part of the SME content review (see RISK-07)."
+    },
+    {
+      "id": "UX-05",
+      "category": "touch-targets",
+      "description": "The UX design mandates 56px minimum touch targets for child-facing interactive elements (PIN pad, answer options, navigation). This is larger than the WCAG AA minimum (44px) and reflects the motor skill development stage of 8-10 year olds.",
+      "severity": "medium",
+      "recommendation": "Add a visual regression test or design token check to enforce minimum touch target sizes. Use a Tailwind utility or CSS custom property for the child touch target size (min-h-14 = 56px). Do not reduce touch targets during performance optimisation."
+    },
+    {
+      "id": "UX-06",
+      "category": "font-size",
+      "description": "Question text must be ≥18px in the child portal. Answer option text ≥16px. No child-facing text below 14px. These are specified in the UX design but are easy to violate during implementation, especially at 375px viewport.",
+      "severity": "medium",
+      "recommendation": "Add font size constraints to the Tailwind config as named text scales (e.g. text-question, text-option) rather than raw Tailwind classes. Include font size in any visual QA checklist."
+    },
+    {
+      "id": "UX-07",
+      "category": "motivation",
+      "description": "The achievement badge grid shows locked achievements with their name visible ('Perfect Power — get 10/10'). This is a deliberate motivation mechanism but requires careful copywriting — achievement names and descriptions must be encouraging, not shame-inducing.",
+      "severity": "low",
+      "recommendation": "Review all achievement names and descriptions for tone. They should describe the aspiration, not the gap. 'Perfect Power — get 10/10 on any mission' is good. Avoid language that implies failure or comparison to others."
+    },
+    {
+      "id": "UX-08",
+      "category": "parent-ux",
+      "description": "The parent dashboard surfaces 'weak areas' with recommendation text. The UX design mandates encouraging language ('Fraction Falls needs some hero training!') not deficit language ('Failed'). This tone requirement must be implemented in both the UI copy and the data labels from the API.",
+      "severity": "medium",
+      "recommendation": "All 'weakest district' labels in API responses and UI should use the district's hero theme name, not a clinical label. The recommendation copy should be hardcoded in the frontend (not from the API) to ensure consistent tone control."
+    },
+    {
+      "id": "UX-09",
+      "category": "empty-states",
+      "description": "Multiple empty states need design: new parent with no children, child with no attempts, district with no missions completed. These are first-run experiences that set the tone of the product.",
+      "severity": "low",
+      "recommendation": "Design empty states for: parent dashboard (0 children → prominent 'Add your first hero' CTA), child city map (all districts locked → only Number Tower available), hero profile (0 achievements → show all locked with motivational copy). Include in BC-02 and BC-03 acceptance criteria."
+    },
+    {
+      "id": "UX-10",
+      "category": "error-handling",
+      "description": "Network errors during attempt submission (e.g. mid-mission connectivity loss) are not addressed in any artifact. If the POST /api/v1/attempts fails, the child loses their mission result. This is a high-impact negative experience.",
+      "severity": "high",
+      "recommendation": "Implement client-side retry logic (2-3 attempts with exponential backoff) for attempt submission. If retries fail, show a friendly error screen ('Oops! Your hero signal was lost. Your mission is saved — try again!') and preserve the local attempt result in component state so the child can retry submission without redoing the mission."
+    }
+  ],
+  "summary": "Hero Academy MVP is a well-scoped, architecturally coherent project with a clear monolithic single-server model. The highest-priority discovery items are: (1) resolve the deployment target (OQ-02) before infrastructure work begins, (2) confirm the email service provider for parent auth, (3) define the avatar_config JSON schema before any avatar-related code starts, (4) resolve the district unlock model contradiction (prior completion vs XP thresholds), (5) clarify whether email verification is blocking or non-blocking, and (6) identify the data controller and commission a privacy policy before public launch. The most significant technical risks are PIN brute-force protection (needs rate-limiting before any child-facing deployment), the attempt submission handler complexity (DB transaction + gamification chain), and city map animation performance on low-end mobile devices. Content production (150 curriculum-aligned 11+ questions) is an underestimated non-code task that should be assigned a dedicated owner and SME reviewer immediately. The UX accessibility requirements (reduced motion, colour-blind-safe feedback, 56px touch targets, font sizes) are well-specified but require explicit enforcement in development — they should appear in acceptance criteria, not just design documentation."
+}
