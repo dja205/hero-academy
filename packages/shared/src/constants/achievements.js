@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ACHIEVEMENTS = void 0;
-exports.ACHIEVEMENTS = [
+export const ACHIEVEMENTS = [
     {
         type: 'first_mission',
         name: 'First Mission',

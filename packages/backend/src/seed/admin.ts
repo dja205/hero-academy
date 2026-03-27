@@ -1,6 +1,6 @@
 import { getDb } from '../db/index';
 import { v4 as uuidv4 } from 'uuid';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export function seedAdmin(): void {
   const db = getDb();

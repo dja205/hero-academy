@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
@@ -28,7 +28,7 @@ export function comparePassword(plain: string, hash: string): boolean {
 export function generateAccessToken(payload: { sub: string; role: Role; parentId?: string }): string {
   return jwt.sign(payload, config.JWT_ACCESS_SECRET, {
     expiresIn: config.JWT_ACCESS_EXPIRES_IN,
-  });
+  } as SignOptions);
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
@@ -318,7 +318,7 @@ export function loginChild(
   const accessToken = jwt.sign(
     { sub: child.id, role: Role.Child, parentId: child.parent_id },
     config.JWT_ACCESS_SECRET,
-    { expiresIn: '2h' },
+    { expiresIn: '2h' } as SignOptions,
   );
 
   return { accessToken };
