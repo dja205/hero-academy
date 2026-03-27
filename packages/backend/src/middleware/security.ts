@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import { config } from '../config';
 
 export function applySecurityMiddleware(app: Application): void {
+  const isDev = config.NODE_ENV !== 'production';
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -18,8 +19,12 @@ export function applySecurityMiddleware(app: Application): void {
           fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
           imgSrc: ["'self'", "data:", "blob:"],
           connectSrc: ["'self'"],
+          // Only upgrade to HTTPS in production — blocks all assets on plain HTTP
+          ...(isDev ? { upgradeInsecureRequests: null } : {}),
         },
       },
+      // Disable HSTS in development (no SSL locally)
+      hsts: isDev ? false : undefined,
     }),
   );
 
