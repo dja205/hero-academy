@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.js.map
+.env
+data/
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
+coverage/
+*.log
+packages/backend/public/

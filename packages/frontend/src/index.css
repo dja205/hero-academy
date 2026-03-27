@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-city-dark text-white font-body;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .btn-hero {
+    @apply px-6 py-3 rounded-xl font-bold text-white bg-hero-red hover:bg-red-600
+           active:scale-95 transition-all duration-150 shadow-lg disabled:opacity-50;
+  }
+
+  .card-hero {
+    @apply bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl;
+  }
+}
