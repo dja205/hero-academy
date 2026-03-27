@@ -8,7 +8,20 @@ import helmet from 'helmet';
 import { config } from '../config';
 
 export function applySecurityMiddleware(app: Application): void {
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+          imgSrc: ["'self'", "data:", "blob:"],
+          connectSrc: ["'self'"],
+        },
+      },
+    }),
+  );
 
   if (config.NODE_ENV === 'production') {
     app.set('trust proxy', 1);

@@ -10,6 +10,7 @@ export default {
         'hero-purple': '#8b5cf6',
         'hero-green': '#10b981',
         'hero-amber': '#f59e0b',
+        'hero-yellow': '#facc15',
         'hero-pink': '#ec4899',
         'city-dark': '#0f172a',
         'city-darker': '#020617',
