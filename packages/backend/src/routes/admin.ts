@@ -389,16 +389,24 @@ router.post('/assessments', (req: Request, res: Response) => {
   }
 });
 
-/** GET /api/v1/admin/assessments — List assessments (exclude soft-deleted) */
+/** GET /api/v1/admin/assessments — List assessments with pagination */
 router.get('/assessments', (req: Request, res: Response) => {
   try {
     const db = getDb();
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const offset = (page - 1) * limit;
+
+    const total = (
+      db.prepare('SELECT COUNT(*) as cnt FROM assessments WHERE active = 1').get() as { cnt: number }
+    ).cnt;
+
     const rows = db
       .prepare(
         `SELECT id, topic_id, title, difficulty, question_ids, "order", active
-         FROM assessments WHERE active = 1 ORDER BY "order" ASC`,
+         FROM assessments WHERE active = 1 ORDER BY "order" ASC LIMIT ? OFFSET ?`,
       )
-      .all() as Array<{
+      .all(limit, offset) as Array<{
       id: string;
       topic_id: string;
       title: string;
@@ -418,7 +426,7 @@ router.get('/assessments', (req: Request, res: Response) => {
       active: !!r.active,
     }));
 
-    res.json({ success: true, data: { assessments } });
+    res.json({ success: true, data: { assessments, total, page, limit } });
   } catch (err) {
     console.error('List assessments error:', err);
     res.status(500).json({
@@ -561,6 +569,111 @@ router.delete('/assessments/:id', (req: Request, res: Response) => {
     res.json({ success: true, data: { message: 'Assessment deleted' } });
   } catch (err) {
     console.error('Delete assessment error:', err);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// User Management (ISS — Tyr P1-09)
+// ---------------------------------------------------------------------------
+
+/** GET /api/v1/admin/users — Paginated user list with search */
+router.get('/users', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const offset = (page - 1) * limit;
+    const search = (req.query.search as string) || '';
+
+    let parents: any[];
+    let total: number;
+
+    if (search) {
+      parents = db
+        .prepare(
+          'SELECT id, email, name, subscription_status, subscription_plan, created_at FROM parents WHERE email LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        )
+        .all(`%${search}%`, limit, offset);
+      total = (
+        db.prepare('SELECT COUNT(*) as cnt FROM parents WHERE email LIKE ?').get(`%${search}%`) as { cnt: number }
+      ).cnt;
+    } else {
+      parents = db
+        .prepare(
+          'SELECT id, email, name, subscription_status, subscription_plan, created_at FROM parents ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        )
+        .all(limit, offset);
+      total = (db.prepare('SELECT COUNT(*) as cnt FROM parents').get() as { cnt: number }).cnt;
+    }
+
+    const users = parents.map((p: any) => {
+      const children = db
+        .prepare(
+          'SELECT id, name, hero_name, xp, rank, created_at FROM children WHERE parent_id = ? AND (active IS NULL OR active = 1)',
+        )
+        .all(p.id);
+      return { ...p, children };
+    });
+
+    res.json({ success: true, data: { users, total, page, limit } });
+  } catch (err) {
+    console.error('List users error:', err);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
+    });
+  }
+});
+
+/** PUT /api/v1/admin/users/:id/suspend — Suspend a parent account */
+router.put('/users/:id/suspend', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const { id } = req.params;
+
+    const parent = db.prepare('SELECT id FROM parents WHERE id = ?').get(id);
+    if (!parent) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'User not found' },
+      });
+      return;
+    }
+
+    db.prepare('UPDATE parents SET subscription_status = ? WHERE id = ?').run('suspended', id);
+    res.json({ success: true, data: { message: 'User suspended' } });
+  } catch (err) {
+    console.error('Suspend user error:', err);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
+    });
+  }
+});
+
+/** PUT /api/v1/admin/users/:id/unsuspend — Unsuspend a parent account */
+router.put('/users/:id/unsuspend', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const { id } = req.params;
+
+    const parent = db.prepare('SELECT id FROM parents WHERE id = ?').get(id);
+    if (!parent) {
+      res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'User not found' },
+      });
+      return;
+    }
+
+    db.prepare('UPDATE parents SET subscription_status = ? WHERE id = ?').run('active', id);
+    res.json({ success: true, data: { message: 'User unsuspended' } });
+  } catch (err) {
+    console.error('Unsuspend user error:', err);
     res.status(500).json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },

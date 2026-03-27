@@ -17,17 +17,33 @@ const childHistoryRouter = Router();
 childHistoryRouter.get(
   '/:childId/attempts',
   authenticateToken,
-  requireRole(Role.Child),
+  requireRole(Role.Child, Role.Parent),
   (req: Request, res: Response) => {
     try {
       const { childId } = req.params;
 
-      if (req.user!.sub !== childId) {
+      // Children can only view their own history
+      if (req.user!.role === Role.Child && req.user!.sub !== childId) {
         res.status(403).json({
           success: false,
           error: { code: 'FORBIDDEN', message: 'You can only view your own history' },
         });
         return;
+      }
+
+      // Parents can only view their own children's history
+      if (req.user!.role === Role.Parent) {
+        const db = getDb();
+        const owns = db
+          .prepare('SELECT 1 FROM children WHERE id = ? AND parent_id = ?')
+          .get(childId, req.user!.sub);
+        if (!owns) {
+          res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Not your child' },
+          });
+          return;
+        }
       }
 
       const page = Math.max(1, parseInt(req.query.page as string) || 1);

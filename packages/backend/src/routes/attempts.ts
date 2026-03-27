@@ -11,6 +11,7 @@ import { Role, calculateStars } from '@hero-academy/shared';
 import { authenticateToken, requireRole } from '../middleware/auth';
 import { getDb } from '../db';
 import { processAttemptGamification } from '../services/gamification';
+import { shouldAwardXp } from '../services/gamification';
 
 const router = Router();
 
@@ -94,7 +95,11 @@ router.post('/', (req: Request, res: Response) => {
     const stars = calculateStars(score, maxScore);
 
     const result = db.transaction(() => {
-      // Insert attempt first so gamification queries (e.g. first_mission count) see it
+      // Evaluate XP eligibility BEFORE inserting, so the current attempt
+      // doesn't inflate MAX(stars) and incorrectly suppress XP on first 3★.
+      const earnXp = shouldAwardXp(childId, assessmentId);
+
+      // Insert attempt
       db.prepare(
         `INSERT INTO attempts (id, child_id, assessment_id, answers, score, max_score, stars, xp_earned, duration_seconds)
          VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
@@ -107,6 +112,7 @@ router.post('/', (req: Request, res: Response) => {
         score,
         maxScore,
         durationSeconds,
+        earnXp,
       );
 
       // Back-fill actual XP earned on the attempt row

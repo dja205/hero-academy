@@ -99,3 +99,21 @@ export function recordPinFailure(childId: string): void {
 export function resetPinAttempts(childId: string): void {
   pinAttempts.delete(childId);
 }
+
+// ---------------------------------------------------------------------------
+// Periodic cleanup — remove expired entries every 15 minutes (P2-06)
+// ---------------------------------------------------------------------------
+
+const PIN_CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, attempt] of pinAttempts) {
+    const windowExpired = now - attempt.firstAttempt > PIN_WINDOW_MS;
+    const lockoutExpired = attempt.blockedUntil !== null && now >= attempt.blockedUntil;
+
+    if (windowExpired && (!attempt.blockedUntil || lockoutExpired)) {
+      pinAttempts.delete(key);
+    }
+  }
+}, PIN_CLEANUP_INTERVAL_MS).unref();

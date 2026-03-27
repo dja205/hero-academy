@@ -13,20 +13,35 @@ import { getDb } from '../db';
 
 const router = Router();
 
-router.use(authenticateToken, requireRole(Role.Child));
+router.use(authenticateToken, requireRole(Role.Child, Role.Parent));
 
 /** GET /api/v1/children/:childId/stats */
 router.get('/:childId/stats', (req: Request, res: Response) => {
   try {
     const { childId } = req.params;
 
-    // Enforce ownership
-    if (req.user!.sub !== childId) {
+    // Children can only view their own stats
+    if (req.user!.role === Role.Child && req.user!.sub !== childId) {
       res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You can only view your own stats' },
       });
       return;
+    }
+
+    // Parents can only view their own children's stats
+    if (req.user!.role === Role.Parent) {
+      const db = getDb();
+      const owns = db
+        .prepare('SELECT 1 FROM children WHERE id = ? AND parent_id = ?')
+        .get(childId, req.user!.sub);
+      if (!owns) {
+        res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Not your child' },
+        });
+        return;
+      }
     }
 
     const db = getDb();

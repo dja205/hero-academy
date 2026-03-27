@@ -11,6 +11,7 @@ import { statsRouter } from './routes/stats';
 import { childrenRouter } from './routes/children';
 import { topicsRouter, zonesRouter } from './routes/topics';
 import { childHistoryRouter, attemptDetailRouter } from './routes/history';
+import { parentRouter } from './routes/parent';
 
 export function createApp(): express.Application {
   const app = express();
@@ -34,6 +35,7 @@ export function createApp(): express.Application {
   app.use('/api/v1/children', childrenRouter);
   app.use('/api/v1/children', statsRouter);
   app.use('/api/v1/children', childHistoryRouter);
+  app.use('/api/v1/parent', parentRouter);
   app.use('/api/v1/topics', topicsRouter);
   app.use('/api/v1/zones', zonesRouter);
 

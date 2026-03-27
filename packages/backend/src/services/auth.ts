@@ -218,7 +218,7 @@ export function registerParent(
   if (existing) {
     const err: any = new Error('Email already registered');
     err.statusCode = 409;
-    err.code = 'EMAIL_EXISTS';
+    err.code = 'DUPLICATE_EMAIL';
     throw err;
   }
 

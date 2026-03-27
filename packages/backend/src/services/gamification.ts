@@ -246,10 +246,11 @@ export function processAttemptGamification(
   score: number,
   maxScore: number,
   durationSeconds: number,
+  preEvaluatedEarnXp?: boolean,
 ): GamificationResult {
   const stars = calculateStars(score, maxScore);
 
-  const earnXp = shouldAwardXp(childId, assessmentId);
+  const earnXp = preEvaluatedEarnXp !== undefined ? preEvaluatedEarnXp : shouldAwardXp(childId, assessmentId);
   const xpEarned = earnXp ? calculateXp(score, stars) : 0;
 
   let newTotalXp = 0;

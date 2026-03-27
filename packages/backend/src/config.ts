@@ -5,6 +5,8 @@ export const config = cleanEnv(process.env, {
   PORT: num({ default: 3001 }),
   DATABASE_PATH: str({ default: './data/hero-academy.db' }),
   JWT_ACCESS_SECRET: str({ default: 'dev-access-secret-change-in-production' }),
+  // Note: JWT_REFRESH_SECRET is retained for config parity but unused at runtime.
+  // Refresh tokens use bcrypt-hashed random secrets stored in DB, not signed JWTs.
   JWT_REFRESH_SECRET: str({ default: 'dev-refresh-secret-change-in-production' }),
   JWT_ACCESS_EXPIRES_IN: str({ default: '15m' }),
   JWT_REFRESH_EXPIRES_IN: str({ default: '7d' }),

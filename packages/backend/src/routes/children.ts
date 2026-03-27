@@ -136,6 +136,37 @@ router.get(
   },
 );
 
+// ── GET /me — child self-service profile ─────────────────────────────
+router.get(
+  '/me',
+  authenticateToken,
+  requireRole(Role.Child),
+  (req: Request, res: Response) => {
+    try {
+      const db = getDb();
+      const child = db
+        .prepare('SELECT * FROM children WHERE id = ?')
+        .get(req.user!.sub);
+
+      if (!child) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Child not found' },
+        });
+        return;
+      }
+
+      res.json({ success: true, data: { child: sanitizeChild(child) } });
+    } catch (err) {
+      console.error('Get child (self) error:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' },
+      });
+    }
+  },
+);
+
 // ── GET /:id — single child detail (parent only) ────────────────────
 router.get(
   '/:id',
