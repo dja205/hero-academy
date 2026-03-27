@@ -395,13 +395,18 @@
         "Password bcrypted"
       ],
       "dependencies": [
-        "ISS-005"
+        "ISS-005",
+        "ISS-056"
       ],
       "blocked_by_decision": null,
       "batch": 3,
       "epic": "Auth",
       "area": "Parent Auth",
-      "split_note": null
+      "split_note": null,
+      "depends_on": [
+        "ISS-005",
+        "ISS-056"
+      ]
     },
     {
       "id": "ISS-010",
@@ -949,13 +954,19 @@
       ],
       "dependencies": [
         "ISS-029",
-        "ISS-002"
+        "ISS-002",
+        "ISS-053"
       ],
       "blocked_by_decision": null,
       "batch": 7,
       "epic": "Child Portal",
       "area": "Map",
-      "split_note": null
+      "split_note": null,
+      "depends_on": [
+        "ISS-029",
+        "ISS-002",
+        "ISS-053"
+      ]
     },
     {
       "id": "ISS-031",
@@ -1648,13 +1659,16 @@
         "Consistent rounds"
       ],
       "dependencies": [
-        "ISS-009"
+        "ISS-005"
       ],
       "blocked_by_decision": null,
       "batch": 3,
       "epic": "Auth",
       "area": "Security",
-      "split_note": null
+      "split_note": null,
+      "depends_on": [
+        "ISS-005"
+      ]
     },
     {
       "id": "ISS-057",
@@ -1803,7 +1817,9 @@
         "Errors tested",
         "80%+ coverage"
       ],
-      "dependencies": [],
+      "dependencies": [
+        "ISS-018"
+      ],
       "blocked_by_decision": null,
       "batch": 10,
       "epic": "Testing",
@@ -1827,7 +1843,9 @@
         "Gamification tested",
         "Edge cases tested"
       ],
-      "dependencies": [],
+      "dependencies": [
+        "ISS-028"
+      ],
       "blocked_by_decision": null,
       "batch": 10,
       "epic": "Testing",
@@ -1850,7 +1868,9 @@
         "Flows complete",
         "All pass"
       ],
-      "dependencies": [],
+      "dependencies": [
+        "ISS-053"
+      ],
       "blocked_by_decision": null,
       "batch": 10,
       "epic": "Testing",
@@ -1967,6 +1987,24 @@
       "epic": "Content",
       "area": "Questions",
       "split_note": "Split from ISS-062 (16h) to enable parallel content work and keep individual tasks at ~4 hours. Final phase includes SME review and integration."
+    },
+    {
+      "id": "ISS-069",
+      "title": "GDPR child data compliance \u2014 pre-launch tracking",
+      "description": "Track data controller identification, privacy policy, parental consent flow, right-to-erasure process, and data retention policy for child accounts.",
+      "type": "discovery",
+      "priority": "critical",
+      "depends_on": [],
+      "batch": "pre-launch"
+    },
+    {
+      "id": "ISS-070",
+      "title": "Deployment infrastructure \u2014 host selection, SQLite persistence, backups",
+      "description": "Select hosting platform, configure SQLite persistence and backup strategy, environment configuration, and deployment pipeline.",
+      "type": "discovery",
+      "priority": "high",
+      "depends_on": [],
+      "batch": "pre-launch"
     }
   ],
   "total_issues": 68

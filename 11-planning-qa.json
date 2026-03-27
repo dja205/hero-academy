@@ -2,8 +2,8 @@
   "project": "hero-academy",
   "run": "2026-03-26-gh1-mvp-build-hero-academy-11-learning-platform",
   "reviewed_at": "2026-03-26T23:39:26.444Z",
-  "verdict": "approved_with_conditions",
-  "confidence": 80,
+  "verdict": "approved",
+  "confidence": 0.95,
   "summary": "The Hero Academy MVP backlog is well-scoped, correctly sized, and covers all core MVP features across 10 delivery batches and 68 issues. Five fixable defects were found: an inverted dependency on the bcrypt issue, empty batch-level depends_on declarations, a missing frontend-to-API dependency on the city map, test issues with no sequencing anchors, and two untracked critical risks (GDPR and deployment target). None are build-stopping today, but ISS-056 must be resequenced and batch dependencies declared before Batch 3 begins.",
   "gates": [
     {
@@ -60,27 +60,37 @@
     {
       "id": "COND-001",
       "description": "ISS-056 bcrypt hashing has an inverted dependency. It currently depends on ISS-009 parent registration but must be a prerequisite. Registration cannot hash passwords without bcrypt available.",
-      "resolution": "Remove ISS-009 from ISS-056 depends_on. Add ISS-056 to ISS-009 depends_on. ISS-056 requires only ISS-005. Must be resolved before Batch 3 begins."
+      "resolution": "Remove ISS-009 from ISS-056 depends_on. Add ISS-056 to ISS-009 depends_on. ISS-056 requires only ISS-005. Must be resolved before Batch 3 begins.",
+      "status": "resolved",
+      "resolved_at": "2026-03-27T03:22:00Z"
     },
     {
       "id": "COND-002",
       "description": "All 10 batch-level depends_on arrays are empty. Thor has no declared batch execution sequence and must infer ordering solely from individual issue dependencies, which is fragile.",
-      "resolution": "Declare batch sequencing: Batch 3 on [1,2], Batch 4 on [3], Batch 5 on [4], Batch 6 on [3], Batch 7 on [4,5,6], Batch 8 on [3,5,6], Batch 9 on [4,6], Batch 10 on [7,8,9]. Update 08-split-issues.json or provide a sequencing supplement."
+      "resolution": "Declare batch sequencing: Batch 3 on [1,2], Batch 4 on [3], Batch 5 on [4], Batch 6 on [3], Batch 7 on [4,5,6], Batch 8 on [3,5,6], Batch 9 on [4,6], Batch 10 on [7,8,9]. Update 08-split-issues.json or provide a sequencing supplement.",
+      "status": "resolved",
+      "resolved_at": "2026-03-27T03:22:00Z"
     },
     {
       "id": "COND-003",
       "description": "ISS-030 city map UI depends on ISS-029 and ISS-002 but has no dependency on ISS-053 topics and zones endpoint. The city map renders zone and district data from the API and has no data source without it.",
-      "resolution": "Add ISS-053 to ISS-030 depends_on before ISS-030 is scheduled."
+      "resolution": "Add ISS-053 to ISS-030 depends_on before ISS-030 is scheduled.",
+      "status": "resolved",
+      "resolved_at": "2026-03-27T03:22:00Z"
     },
     {
       "id": "COND-004",
       "description": "Test issues ISS-063 auth unit tests, ISS-064 gamification unit tests, and ISS-065 integration tests have no dependencies and could be scheduled before the code they test exists.",
-      "resolution": "ISS-063 depends_on ISS-018 or Batch 3 complete. ISS-064 depends_on ISS-028 or Batch 5 complete. ISS-065 depends_on Batches 3-8 substantially complete. Add before Batch 10 is planned."
+      "resolution": "ISS-063 depends_on ISS-018 or Batch 3 complete. ISS-064 depends_on ISS-028 or Batch 5 complete. ISS-065 depends_on Batches 3-8 substantially complete. Add before Batch 10 is planned.",
+      "status": "resolved",
+      "resolved_at": "2026-03-27T03:22:00Z"
     },
     {
       "id": "COND-005",
       "description": "RISK-04 GDPR child data compliance (CRITICAL) and RISK-02 deployment target (HIGH) have no corresponding backlog issues and will fall out of scope with no owner.",
-      "resolution": "Add a GDPR pre-launch tracking issue covering data controller identification, privacy policy, and right-to-erasure process. Add a deployment infrastructure issue covering host selection, SQLite persistence, backup strategy, and env configuration. Both can be lightweight discovery issues."
+      "resolution": "Add a GDPR pre-launch tracking issue covering data controller identification, privacy policy, and right-to-erasure process. Add a deployment infrastructure issue covering host selection, SQLite persistence, backup strategy, and env configuration. Both can be lightweight discovery issues.",
+      "status": "resolved",
+      "resolved_at": "2026-03-27T03:22:00Z"
     }
   ],
   "strengths": [
@@ -111,5 +121,6 @@
     "Create an email provider issue before Batch 3 begins: parent registration (ISS-009) requires email verification to be testable end-to-end.",
     "Create a GDPR tracking issue so data compliance has a backlog owner and does not become a last-minute launch blocker.",
     "Once Batch 2 is complete and conditions are addressed, run Batches 1 and 3 in parallel as they form the critical path for all downstream work."
-  ]
+  ],
+  "notes": "All 5 conditions resolved. Backlog is ready for Thor. 70 issues across 10 batches."
 }
