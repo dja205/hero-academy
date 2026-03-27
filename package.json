@@ -7,7 +7,10 @@
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/backend && npm run build --workspace=packages/frontend",
     "start": "node packages/backend/dist/index.js",
     "seed": "npm run seed --workspace=packages/backend",
-    "migrate": "npm run migrate --workspace=packages/backend"
+    "migrate": "npm run migrate --workspace=packages/backend",
+    "test": "npm run test --workspace=packages/backend --if-present",
+    "test:smoke": "bash scripts/smoke-test.sh",
+    "typecheck": "npm run build --workspace=packages/shared && tsc --noEmit -p packages/backend/tsconfig.json && tsc --noEmit -p packages/frontend/tsconfig.json"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

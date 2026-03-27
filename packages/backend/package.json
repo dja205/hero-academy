@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "ts-node src/db/migrate.ts",
-    "seed": "ts-node src/seed/index.ts"
+    "seed": "ts-node src/seed/index.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hero-academy/shared": "*",
@@ -34,6 +35,7 @@
     "@types/uuid": "^9.0.7",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.2"
   }
 }
