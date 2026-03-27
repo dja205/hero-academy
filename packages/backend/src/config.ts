@@ -11,4 +11,6 @@ export const config = cleanEnv(process.env, {
   STRIPE_SECRET_KEY: str({ default: 'sk_test_placeholder' }),
   STRIPE_WEBHOOK_SECRET: str({ default: 'whsec_placeholder' }),
   FRONTEND_URL: str({ default: 'http://localhost:5173' }),
+  // ISS-055: 'auto' → true in production, false otherwise. Set 'true'/'false' to override.
+  SECURE_COOKIES: str({ default: 'auto' }),
 });
