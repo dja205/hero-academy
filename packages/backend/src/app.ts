@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import { config } from './config';
 import { applySecurityMiddleware } from './middleware/security';
 import { authRouter } from './routes/auth';
@@ -13,6 +14,8 @@ import { topicsRouter, zonesRouter } from './routes/topics';
 import { childHistoryRouter, attemptDetailRouter } from './routes/history';
 import { parentRouter } from './routes/parent';
 
+const PUBLIC_DIR = path.resolve(__dirname, '../public');
+
 export function createApp(): express.Application {
   const app = express();
 
@@ -22,6 +25,9 @@ export function createApp(): express.Application {
   app.use(cors({ origin: config.FRONTEND_URL, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
+
+  // Serve compiled frontend static assets
+  app.use(express.static(PUBLIC_DIR));
 
   app.get('/health', (_req, res) => {
     res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString() } });
@@ -38,6 +44,11 @@ export function createApp(): express.Application {
   app.use('/api/v1/parent', parentRouter);
   app.use('/api/v1/topics', topicsRouter);
   app.use('/api/v1/zones', zonesRouter);
+
+  // SPA fallback — send index.html for any non-API, non-asset route
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  });
 
   return app;
 }
