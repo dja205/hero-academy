@@ -25,7 +25,7 @@ export function runMigrations(): void {
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
     db.exec(sql);
     db.prepare('INSERT INTO _migrations (id) VALUES (?)').run(id);
-    console. Migration applied: ${file}`);log(`
+    console.log(`📋 Migration applied: ${file}`);
   }
 }
 
