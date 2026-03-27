@@ -141,7 +141,7 @@ export function CityMapPage() {
                               {district.districtName}
                             </h3>
                             {!unlocked && (
-                              <span className="text-xs text-slate-500">Locked</span>
+                              <span className="text-xs text-slate-500">Earn ⭐⭐ to unlock</span>
                             )}
                           </div>
 

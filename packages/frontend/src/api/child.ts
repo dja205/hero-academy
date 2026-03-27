@@ -39,7 +39,8 @@ interface AttemptResult {
   stars: 1 | 2 | 3;
   xpEarned: number;
   newTotalXp: number;
-  newRank: string;
+  newRank: string | null;
+  currentRank: string;
   currentStreak: number;
   bestStreak: number;
   newAchievements: string[];

@@ -4,6 +4,24 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { childApi } from '../../api/child';
 import { PowerMeter } from '../../components/child/PowerMeter';
+/** Generate a UUID that works in non-secure contexts (HTTP over IP). */
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        try {
+            return crypto.randomUUID();
+        }
+        catch {
+            // Falls through to fallback
+        }
+    }
+    // Fallback: use crypto.getRandomValues (available in all modern browsers)
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 1
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 export function MissionPage() {
     const { assessmentId } = useParams();
@@ -55,7 +73,7 @@ export function MissionPage() {
             // Submit attempt with idempotency key
             const durationSeconds = Math.round((Date.now() - startTime) / 1000);
             const finalAnswers = [...answers];
-            const attemptId = crypto.randomUUID();
+            const attemptId = generateUUID();
             childApi
                 .submitAttempt({
                 assessmentId: assessment.id,
@@ -71,7 +89,7 @@ export function MissionPage() {
                         stars: result.stars,
                         xpEarned: result.xpEarned,
                         newTotalXp: result.newTotalXp,
-                        newRank: result.newRank,
+                        newRank: result.newRank ?? result.currentRank ?? 'Recruit',
                         newAchievements: result.newAchievements,
                         assessmentId,
                         topicId,

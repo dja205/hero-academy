@@ -112,11 +112,7 @@ export function DistrictPage() {
             const isLocked = index > 0 && !(topic.progress && topic.progress.completed > index - 1);
             const diff = DIFFICULTY_LABEL[mission.difficulty] ?? DIFFICULTY_LABEL.medium;
 
-            // Simple star calc: if completed missions > index, show stars based on progress
             const missionCompleted = topic.progress ? topic.progress.completed > index : false;
-            const starCount = missionCompleted
-              ? Math.min(3, Math.max(1, 3 - index))
-              : 0;
 
             return (
               <motion.button
@@ -155,9 +151,9 @@ export function DistrictPage() {
                     <span className={`text-xs font-bold ${diff.colour}`}>
                       {diff.label}
                     </span>
-                    {starCount > 0 && (
-                      <span className="text-xs text-hero-amber">
-                        {'⭐'.repeat(starCount)}
+                    {missionCompleted && (
+                      <span className="text-xs text-hero-green">
+                        ✅ Done
                       </span>
                     )}
                     {isLocked && (

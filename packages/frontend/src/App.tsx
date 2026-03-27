@@ -19,7 +19,7 @@ import { QuestionsPage } from './pages/admin/QuestionsPage';
 import { AssessmentsPage } from './pages/admin/AssessmentsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { useAuthStore } from './store/auth';
-import { apiClient } from './api/client';
+
 
 /* ------------------------------------------------------------------ */
 /*  P3-01: React Error Boundary                                       */
@@ -77,11 +77,20 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
       setReady(true);
       return;
     }
-    apiClient
-      .post<{ accessToken: string }>('/auth/refresh')
-      .then((data) => {
-        const payload = JSON.parse(atob(data.accessToken.split('.')[1]));
-        setAuth(data.accessToken, payload.role, payload.sub, payload.parentId);
+    // Use fetch directly (not apiClient) to avoid the 401 interceptor
+    // firing a second refresh attempt on cold start
+    fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then((res) => {
+        if (!res.ok) throw new Error('no session');
+        return res.json();
+      })
+      .then((body) => {
+        if (!body.success || !body.data?.accessToken) return;
+        const b64 = body.data.accessToken.split('.')[1]
+          .replace(/-/g, '+').replace(/_/g, '/');
+        const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
+        const payload = JSON.parse(atob(padded));
+        setAuth(body.data.accessToken, payload.role, payload.sub, payload.parentId);
       })
       .catch(() => {
         // No refresh cookie = not logged in, that's fine

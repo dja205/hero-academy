@@ -45,17 +45,13 @@ export function DistrictPage() {
                         // First mission always unlocked, subsequent require prior mission completed
                         const isLocked = index > 0 && !(topic.progress && topic.progress.completed > index - 1);
                         const diff = DIFFICULTY_LABEL[mission.difficulty] ?? DIFFICULTY_LABEL.medium;
-                        // Simple star calc: if completed missions > index, show stars based on progress
                         const missionCompleted = topic.progress ? topic.progress.completed > index : false;
-                        const starCount = missionCompleted
-                            ? Math.min(3, Math.max(1, 3 - index))
-                            : 0;
                         return (_jsxs(motion.button, { type: "button", disabled: isLocked, onClick: () => navigate(`/child/mission/${mission.id}`, { state: { topicId } }), className: `card-hero text-left flex items-center gap-4 min-h-[72px] transition-all
                   ${isLocked
                                 ? 'opacity-50 cursor-not-allowed'
                                 : 'hover:border-hero-amber/50 active:scale-[0.98]'}`, initial: prefersReduced ? {} : { x: -15, opacity: 0 }, animate: { x: 0, opacity: 1 }, transition: { delay: index * 0.1 }, whileTap: isLocked ? {} : { scale: 0.97 }, children: [_jsx("div", { className: "w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shrink-0", style: {
                                         backgroundColor: isLocked ? undefined : topic.colour + '33',
                                         color: isLocked ? undefined : topic.colour,
-                                    }, children: isLocked ? '🔒' : index + 1 }), _jsxs("div", { className: "flex-1 min-w-0", children: [_jsx("div", { className: "flex items-center gap-2", children: _jsx("h3", { className: "text-base font-bold text-white truncate", children: mission.title }) }), _jsxs("div", { className: "flex items-center gap-3 mt-1", children: [_jsx("span", { className: `text-xs font-bold ${diff.colour}`, children: diff.label }), starCount > 0 && (_jsx("span", { className: "text-xs text-hero-amber", children: '⭐'.repeat(starCount) })), isLocked && (_jsx("span", { className: "text-xs text-slate-500", children: "Complete previous mission" }))] })] })] }, mission.id));
+                                    }, children: isLocked ? '🔒' : index + 1 }), _jsxs("div", { className: "flex-1 min-w-0", children: [_jsx("div", { className: "flex items-center gap-2", children: _jsx("h3", { className: "text-base font-bold text-white truncate", children: mission.title }) }), _jsxs("div", { className: "flex items-center gap-3 mt-1", children: [_jsx("span", { className: `text-xs font-bold ${diff.colour}`, children: diff.label }), missionCompleted && (_jsx("span", { className: "text-xs text-hero-green", children: "\u2705 Done" })), isLocked && (_jsx("span", { className: "text-xs text-slate-500", children: "Complete previous mission" }))] })] })] }, mission.id));
                     }) }), assessments.length === 0 && (_jsx("p", { className: "text-slate-400 text-center mt-8", children: "No missions available yet. Check back soon!" }))] }) }));
 }

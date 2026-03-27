@@ -124,6 +124,11 @@ router.post('/', (req: Request, res: Response) => {
       return gamification;
     })();
 
+    // Always include the child's current rank so the frontend can display it
+    const childRow = db
+      .prepare('SELECT rank FROM children WHERE id = ?')
+      .get(childId) as { rank: string };
+
     res.status(201).json({
       success: true,
       data: {
@@ -134,6 +139,7 @@ router.post('/', (req: Request, res: Response) => {
         xpEarned: result.xpEarned,
         newTotalXp: result.newTotalXp,
         newRank: result.newRank,
+        currentRank: childRow.rank,
         currentStreak: result.currentStreak,
         bestStreak: result.bestStreak,
         newAchievements: result.newAchievements,
