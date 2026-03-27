@@ -16,7 +16,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   role: null,
   userId: null,
   parentId: null,
-  setAuth: (token, role, userId, parentId = null) =>
-    set({ token, role, userId, parentId }),
+  setAuth: (token, role, userId, parentId) =>
+    set({ token, role, userId, parentId: parentId ?? null }),
   clearAuth: () => set({ token: null, role: null, userId: null, parentId: null }),
 }));
