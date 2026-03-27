@@ -106,10 +106,11 @@ export function AddChildModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="child-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Child's Name
               </label>
               <input
+                id="child-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -120,8 +121,9 @@ export function AddChildModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hero Name</label>
+              <label htmlFor="hero-name" className="block text-sm font-medium text-gray-700 mb-1">Hero Name</label>
               <input
+                id="hero-name"
                 type="text"
                 value={heroName}
                 onChange={(e) => setHeroName(e.target.value)}
@@ -171,10 +173,11 @@ export function AddChildModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="child-pin" className="block text-sm font-medium text-gray-700 mb-1">
                 PIN (4 digits)
               </label>
               <input
+                id="child-pin"
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
@@ -187,8 +190,9 @@ export function AddChildModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm PIN</label>
+              <label htmlFor="child-confirm-pin" className="block text-sm font-medium text-gray-700 mb-1">Confirm PIN</label>
               <input
+                id="child-confirm-pin"
                 type="password"
                 inputMode="numeric"
                 maxLength={4}

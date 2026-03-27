@@ -36,13 +36,12 @@ export function RegisterPage() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role: 'parent',
       });
       navigate('/parent/login', {
         state: { message: 'Registration successful! Check your email to verify your account.' },
       });
     } catch (e: unknown) {
-      if (e instanceof ApiRequestError && e.code === 'DUPLICATE_EMAIL') {
+      if (e instanceof ApiRequestError && e.code === 'EMAIL_EXISTS') {
         setError('An account with this email already exists. Please log in instead.');
       } else if (e instanceof Error) {
         setError(e.message);
@@ -65,8 +64,9 @@ export function RegisterPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input
+                id="register-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -77,8 +77,9 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
+                id="register-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -94,9 +95,10 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <div className="relative">
                 <input
+                  id="register-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -122,10 +124,11 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="register-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password
               </label>
               <input
+                id="register-confirm-password"
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

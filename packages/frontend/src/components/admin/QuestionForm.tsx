@@ -77,8 +77,9 @@ export function QuestionForm({ initial, onSubmit, onCancel, topics }: QuestionFo
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+        <label htmlFor="question-text" className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
         <textarea
+          id="question-text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
@@ -90,13 +91,14 @@ export function QuestionForm({ initial, onSubmit, onCancel, topics }: QuestionFo
       <div className="grid grid-cols-2 gap-3">
         {options.map((opt, i) => (
           <div key={i}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={`question-option-${i}`} className="block text-sm font-medium text-gray-700 mb-1">
               Option {OPTION_LABELS[i]}
               {i === correctIndex && (
                 <span className="text-green-600 ml-1">✓ Correct</span>
               )}
             </label>
             <input
+              id={`question-option-${i}`}
               type="text"
               value={opt}
               onChange={(e) => handleOptionChange(i, e.target.value)}
@@ -128,8 +130,9 @@ export function QuestionForm({ initial, onSubmit, onCancel, topics }: QuestionFo
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Explanation</label>
+        <label htmlFor="question-explanation" className="block text-sm font-medium text-gray-700 mb-1">Explanation</label>
         <textarea
+          id="question-explanation"
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
           rows={2}
@@ -140,8 +143,9 @@ export function QuestionForm({ initial, onSubmit, onCancel, topics }: QuestionFo
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+          <label htmlFor="question-topic" className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
           <select
+            id="question-topic"
             value={topicId}
             onChange={(e) => setTopicId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
@@ -156,8 +160,9 @@ export function QuestionForm({ initial, onSubmit, onCancel, topics }: QuestionFo
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+          <label htmlFor="question-difficulty" className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
           <select
+            id="question-difficulty"
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"

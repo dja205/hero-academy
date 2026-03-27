@@ -5,7 +5,7 @@ import { apiClient, ApiRequestError } from '../../api/client';
 
 interface LoginResponse {
   accessToken: string;
-  userId: string;
+  parent: { id: string; email: string; name: string };
 }
 
 export function LoginPage() {
@@ -36,7 +36,7 @@ export function LoginPage() {
         email: email.trim().toLowerCase(),
         password,
       });
-      setAuth(data.accessToken, 'parent', data.userId);
+      setAuth(data.accessToken, 'parent', data.parent.id);
       navigate('/parent/dashboard', { replace: true });
     } catch (e: unknown) {
       if (e instanceof ApiRequestError) {
@@ -66,8 +66,9 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label htmlFor="parent-login-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
+                id="parent-login-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -78,8 +79,9 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label htmlFor="parent-login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input
+                id="parent-login-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -15,17 +15,10 @@ interface TopicItem {
   progress?: { completed: number; total: number; stars: { one: number; two: number; three: number } };
 }
 
-/** Check if a district is unlocked based on order and prior district progress */
-function isDistrictUnlocked(topic: TopicItem, allTopics: TopicItem[]): boolean {
+/** Check if a district is unlocked based on server-provided flag */
+function isDistrictUnlocked(topic: TopicItem): boolean {
   if (topic.unlocked !== undefined) return topic.unlocked;
-  if (topic.order === 1) return true;
-
-  const prior = allTopics.find(
-    (t) => t.zoneName === topic.zoneName && t.order === topic.order - 1,
-  );
-  if (!prior?.progress) return false;
-  const priorStars = prior.progress.stars;
-  return priorStars.two + priorStars.three >= 1;
+  return topic.order === 1;
 }
 
 export function CityMapPage() {
@@ -110,7 +103,7 @@ export function CityMapPage() {
                 {mathDistricts
                   .sort((a, b) => a.order - b.order)
                   .map((district) => {
-                    const unlocked = isDistrictUnlocked(district, mathDistricts);
+                    const unlocked = isDistrictUnlocked(district);
                     const completed = district.progress?.completed ?? 0;
                     const total = district.progress?.total ?? 3;
                     const totalStars =

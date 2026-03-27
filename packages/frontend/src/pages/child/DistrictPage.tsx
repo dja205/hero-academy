@@ -123,7 +123,7 @@ export function DistrictPage() {
                 key={mission.id}
                 type="button"
                 disabled={isLocked}
-                onClick={() => navigate(`/child/mission/${mission.id}`)}
+                onClick={() => navigate(`/child/mission/${mission.id}`, { state: { topicId } })}
                 className={`card-hero text-left flex items-center gap-4 min-h-[72px] transition-all
                   ${isLocked
                     ? 'opacity-50 cursor-not-allowed'

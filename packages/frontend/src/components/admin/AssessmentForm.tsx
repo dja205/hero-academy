@@ -96,8 +96,9 @@ export function AssessmentForm({ initial, onSubmit, onCancel, topics }: Assessme
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+        <label htmlFor="assessment-title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
         <input
+          id="assessment-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -108,8 +109,9 @@ export function AssessmentForm({ initial, onSubmit, onCancel, topics }: Assessme
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+          <label htmlFor="assessment-topic" className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
           <select
+            id="assessment-topic"
             value={topicId}
             onChange={(e) => setTopicId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
@@ -124,8 +126,9 @@ export function AssessmentForm({ initial, onSubmit, onCancel, topics }: Assessme
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+          <label htmlFor="assessment-difficulty" className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
           <select
+            id="assessment-difficulty"
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"

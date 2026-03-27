@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/auth';
 import { childApi } from '../../api/child';
 import { HeroAvatar } from '../../components/child/HeroAvatar';
 import { apiClient } from '../../api/client';
+import { RANKS, ACHIEVEMENTS as SHARED_ACHIEVEMENTS } from '@hero-academy/shared';
 
 interface ChildProfile {
   id: string;
@@ -26,40 +27,16 @@ interface ChildStats {
   rank: string;
 }
 
-interface Achievement {
-  id: string;
-  name: string;
-  earned: boolean;
-}
-
-const RANK_XP: Record<string, number> = {
-  Cadet: 0,
-  Guardian: 200,
-  Champion: 500,
-  Legend: 1000,
-  Mythic: 2000,
-};
-
-const ALL_ACHIEVEMENTS: Achievement[] = [
-  { id: 'first-mission', name: 'First Mission', earned: false },
-  { id: 'perfect-score', name: 'Perfect Score', earned: false },
-  { id: 'streak-3', name: '3-Day Streak', earned: false },
-  { id: 'streak-7', name: '7-Day Streak', earned: false },
-  { id: 'star-collector', name: 'Star Collector', earned: false },
-  { id: 'speed-demon', name: 'Speed Demon', earned: false },
-  { id: 'math-whiz', name: 'Math Whiz', earned: false },
-  { id: 'explorer', name: 'Explorer', earned: false },
-];
-
-function getNextRankXp(rank: string): number {
-  const entries = Object.entries(RANK_XP);
-  const idx = entries.findIndex(([r]) => r === rank);
-  if (idx < 0 || idx >= entries.length - 1) return entries[entries.length - 1][1];
-  return entries[idx + 1][1];
-}
-
-function getCurrentRankXp(rank: string): number {
-  return RANK_XP[rank] ?? 0;
+function getRankProgress(rank: string, totalXp: number) {
+  const currentRank = RANKS.find((r) => r.name === rank) || RANKS[0];
+  const rankIdx = RANKS.indexOf(currentRank);
+  const nextRank = rankIdx < RANKS.length - 1 ? RANKS[rankIdx + 1] : null;
+  const rankFloor = currentRank.minXp;
+  const rankCeiling = nextRank ? nextRank.minXp : rankFloor + 1000;
+  const rankRange = rankCeiling - rankFloor;
+  const progressInRank = Math.min(totalXp - rankFloor, rankRange);
+  const pct = rankRange > 0 ? Math.round((progressInRank / rankRange) * 100) : 100;
+  return { pct, ceiling: nextRank ? nextRank.minXp : rankCeiling, colour: currentRank.colour };
 }
 
 export function ProfilePage() {
@@ -118,11 +95,7 @@ export function ProfilePage() {
     );
   }
 
-  const currentRankXp = getCurrentRankXp(stats.rank);
-  const nextRankXp = getNextRankXp(stats.rank);
-  const rankRange = nextRankXp - currentRankXp;
-  const progressInRank = Math.min(stats.totalXp - currentRankXp, rankRange);
-  const rankPct = rankRange > 0 ? Math.round((progressInRank / rankRange) * 100) : 100;
+  const { pct: rankPct, ceiling: nextRankXp } = getRankProgress(stats.rank, stats.totalXp);
 
   return (
     <div className="min-h-screen bg-city-dark px-4 pt-6 pb-24">
@@ -223,18 +196,14 @@ export function ProfilePage() {
         <div className="w-full">
           <h2 className="text-xl font-hero text-white mb-3">Achievements</h2>
           <div className="grid grid-cols-4 gap-3">
-            {ALL_ACHIEVEMENTS.map((achievement) => (
+            {SHARED_ACHIEVEMENTS.map((achievement) => (
               <div
-                key={achievement.id}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl text-center transition-all
-                  ${achievement.earned
-                    ? 'bg-hero-amber/20'
-                    : 'bg-slate-800 opacity-50 grayscale'
-                  }`}
+                key={achievement.type}
+                className="flex flex-col items-center gap-1 p-2 rounded-xl text-center transition-all bg-slate-800 opacity-50 grayscale"
                 title={achievement.name}
               >
                 <span className="text-2xl">
-                  {achievement.earned ? '🏆' : '🔒'}
+                  {achievement.icon}
                 </span>
                 <span className="text-[10px] text-slate-400 leading-tight">
                   {achievement.name}

@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { StarReveal } from '../../components/child/StarReveal';
+import { RANKS } from '@hero-academy/shared';
 
 interface CompletionState {
   score: number;
@@ -13,23 +14,16 @@ interface CompletionState {
   assessmentId: string;
 }
 
-const RANK_XP: Record<string, number> = {
-  Cadet: 0,
-  Guardian: 200,
-  Champion: 500,
-  Legend: 1000,
-  Mythic: 2000,
-};
-
-function getNextRankXp(rank: string): number {
-  const entries = Object.entries(RANK_XP);
-  const idx = entries.findIndex(([r]) => r === rank);
-  if (idx < 0 || idx >= entries.length - 1) return entries[entries.length - 1][1];
-  return entries[idx + 1][1];
-}
-
-function getCurrentRankXp(rank: string): number {
-  return RANK_XP[rank] ?? 0;
+function getRankProgress(rank: string, totalXp: number) {
+  const currentRank = RANKS.find((r) => r.name === rank) || RANKS[0];
+  const rankIdx = RANKS.indexOf(currentRank);
+  const nextRank = rankIdx < RANKS.length - 1 ? RANKS[rankIdx + 1] : null;
+  const rankFloor = currentRank.minXp;
+  const rankCeiling = nextRank ? nextRank.minXp : rankFloor + 1000;
+  const rankRange = rankCeiling - rankFloor;
+  const progressInRank = Math.min(totalXp - rankFloor, rankRange);
+  const pct = rankRange > 0 ? Math.round((progressInRank / rankRange) * 100) : 100;
+  return { pct, ceiling: nextRank ? nextRank.minXp : rankCeiling };
 }
 
 export function MissionCompletePage() {
@@ -51,11 +45,7 @@ export function MissionCompletePage() {
   }
 
   const { score, maxScore, stars, xpEarned, newTotalXp, newRank, newAchievements } = state;
-  const currentRankXp = getCurrentRankXp(newRank);
-  const nextRankXp = getNextRankXp(newRank);
-  const rankRange = nextRankXp - currentRankXp;
-  const progressInRank = Math.min(newTotalXp - currentRankXp, rankRange);
-  const rankPct = rankRange > 0 ? Math.round((progressInRank / rankRange) * 100) : 100;
+  const { pct: rankPct } = getRankProgress(newRank, newTotalXp);
 
   return (
     <div className="min-h-screen bg-city-dark px-4 pt-8 pb-24 flex flex-col items-center">

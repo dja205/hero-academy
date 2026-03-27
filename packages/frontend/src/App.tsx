@@ -1,3 +1,4 @@
+import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute as ChildProtectedRoute } from './components/child/ProtectedRoute';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
@@ -17,10 +18,93 @@ import { OverviewPage } from './pages/admin/OverviewPage';
 import { QuestionsPage } from './pages/admin/QuestionsPage';
 import { AssessmentsPage } from './pages/admin/AssessmentsPage';
 import { UsersPage } from './pages/admin/UsersPage';
+import { useAuthStore } from './store/auth';
+import { apiClient } from './api/client';
+
+/* ------------------------------------------------------------------ */
+/*  P3-01: React Error Boundary                                       */
+/* ------------------------------------------------------------------ */
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Uncaught error:', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 bg-gray-50">
+          <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
+          <p className="text-gray-600 text-center max-w-md">
+            An unexpected error occurred. Please refresh the page to try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  P1-06: Silent re-auth on app mount                                */
+/* ------------------------------------------------------------------ */
+function AuthBootstrap({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const token = useAuthStore((s) => s.token);
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    if (token) {
+      setReady(true);
+      return;
+    }
+    apiClient
+      .post<{ accessToken: string }>('/auth/refresh')
+      .then((data) => {
+        const payload = JSON.parse(atob(data.accessToken.split('.')[1]));
+        setAuth(data.accessToken, payload.role, payload.sub, payload.parentId);
+      })
+      .catch(() => {
+        // No refresh cookie = not logged in, that's fine
+      })
+      .finally(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-hero-yellow border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
 
 export default function App() {
   return (
-    <Routes>
+    <ErrorBoundary>
+      <AuthBootstrap>
+        <Routes>
       {/* Child Portal */}
       <Route path="/child/login" element={<ChildLoginPage />} />
       <Route path="/child/map" element={<ChildProtectedRoute><CityMapPage /></ChildProtectedRoute>} />
@@ -48,6 +132,8 @@ export default function App() {
       <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
 
       <Route path="/" element={<Navigate to="/parent/login" replace />} />
-    </Routes>
+        </Routes>
+      </AuthBootstrap>
+    </ErrorBoundary>
   );
 }

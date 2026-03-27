@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { childApi } from '../../api/child';
 import { PowerMeter } from '../../components/child/PowerMeter';
@@ -22,6 +22,8 @@ export function MissionPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const navigate = useNavigate();
   const prefersReduced = useReducedMotion();
+  const location = useLocation();
+  const { topicId } = (location.state as { topicId?: string }) || {};
 
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,22 +35,23 @@ export function MissionPage() {
   const [startTime] = useState(Date.now());
 
   useEffect(() => {
-    if (!assessmentId) return;
+    if (!assessmentId || !topicId) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
 
-    // Fetch assessments and find the matching one
-    childApi.getAssessments('').then((data) => {
+    childApi.getAssessments(topicId).then((data) => {
       if (cancelled) return;
       const found = data.assessments.find((a) => a.id === assessmentId);
       if (found) setAssessment(found);
       setLoading(false);
     }).catch(() => {
-      // Retry with direct assessment endpoint pattern
       if (!cancelled) setLoading(false);
     });
 
     return () => { cancelled = true; };
-  }, [assessmentId]);
+  }, [assessmentId, topicId]);
 
   const question = assessment?.questions[currentQ];
   const totalQuestions = assessment?.questions.length ?? 0;
@@ -60,8 +63,8 @@ export function MissionPage() {
       setShowFeedback(true);
       setAnswers((prev) => [...prev, optionIndex]);
 
-      // Show "Next" button after 1s
-      setTimeout(() => setShowNext(true), 1000);
+      // Show "Next" button after brief delay
+      setTimeout(() => setShowNext(true), 500);
     },
     [showFeedback, question],
   );
@@ -69,14 +72,16 @@ export function MissionPage() {
   const handleNext = useCallback(() => {
     const nextQ = currentQ + 1;
     if (nextQ >= totalQuestions) {
-      // Submit attempt
+      // Submit attempt with idempotency key
       const durationSeconds = Math.round((Date.now() - startTime) / 1000);
       const finalAnswers = [...answers];
+      const attemptId = crypto.randomUUID();
       childApi
         .submitAttempt({
           assessmentId: assessment!.id,
           answers: finalAnswers,
           durationSeconds,
+          attemptId,
         })
         .then((result) => {
           navigate(`/child/mission/${assessmentId}/complete`, {
@@ -100,7 +105,7 @@ export function MissionPage() {
               stars: 1 as const,
               xpEarned: 0,
               newTotalXp: 0,
-              newRank: 'Cadet',
+              newRank: 'Recruit',
               newAchievements: [],
               assessmentId,
             },
@@ -137,11 +142,6 @@ export function MissionPage() {
       </div>
     );
   }
-
-  // We don't have correct answer index from the API (answers hidden),
-  // so we show cosmetic feedback: option 0 is treated as "correct" for UI demo.
-  // In production the server returns correctness on submit.
-  const isCorrect = selectedOption === 0;
 
   return (
     <div className="min-h-screen bg-city-dark px-4 pt-6 pb-24">
@@ -189,20 +189,11 @@ export function MissionPage() {
             <div className="grid gap-3">
               {question.options.map((option, i) => {
                 let optionStyle = 'bg-slate-800 border-slate-700 hover:border-slate-500';
-                let icon = '';
 
-                if (showFeedback) {
-                  if (i === selectedOption && isCorrect) {
-                    optionStyle = 'bg-hero-green/20 border-hero-green';
-                    icon = ' ✓';
-                  } else if (i === selectedOption && !isCorrect) {
-                    optionStyle = 'bg-hero-red/20 border-hero-red';
-                    icon = ' ✗';
-                  } else if (i === 0) {
-                    // Highlight correct answer
-                    optionStyle = 'bg-hero-green/10 border-hero-green/50';
-                    icon = ' ✓';
-                  }
+                if (showFeedback && i === selectedOption) {
+                  optionStyle = 'bg-hero-blue/20 border-hero-blue';
+                } else if (showFeedback) {
+                  optionStyle = 'bg-slate-800 border-slate-700';
                 }
 
                 return (
@@ -215,41 +206,18 @@ export function MissionPage() {
                                min-h-[56px] transition-all active:scale-[0.98]
                                disabled:cursor-default ${optionStyle}`}
                     whileTap={showFeedback ? {} : { scale: 0.97 }}
-                    animate={
-                      showFeedback && i === selectedOption && !isCorrect && !prefersReduced
-                        ? { x: [0, -6, 6, -6, 0] }
-                        : {}
-                    }
                     transition={{ duration: 0.3 }}
                   >
                     <span className="font-bold text-hero-amber shrink-0 w-7">
                       {OPTION_LABELS[i]}
                     </span>
                     <span className="text-base leading-snug line-clamp-2">
-                      {option}{icon}
+                      {option}
                     </span>
                   </motion.button>
                 );
               })}
             </div>
-
-            {/* Feedback explanation */}
-            <AnimatePresence>
-              {showFeedback && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className={`mt-4 p-4 rounded-xl border text-sm ${
-                    isCorrect
-                      ? 'bg-hero-green/10 border-hero-green/30 text-hero-green'
-                      : 'bg-hero-red/10 border-hero-red/30 text-hero-red'
-                  }`}
-                >
-                  {isCorrect ? '🎉 Great job! That\'s correct!' : '💪 Not quite — keep trying!'}
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Next button */}
             <AnimatePresence>
