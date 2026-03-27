@@ -1166,15 +1166,22 @@ export function seedQuestions(): void {
 
     const questionIds: string[] = [];
 
+    // Look up the topic_id from the assessment (questions table uses topic_id, not assessment_id)
+    const assessment = db.prepare('SELECT topic_id FROM assessments WHERE id = ?').get(assessmentId) as { topic_id: string } | undefined;
+    if (!assessment) {
+      console.warn(`  Warning: Assessment "${assessmentKey}" not found in DB — skipping.`);
+      continue;
+    }
+
     for (const spec of specs) {
       const id = uuidv4();
       questionIds.push(id);
       db.prepare(`
-        INSERT INTO questions (id, assessment_id, text, options, correct_index, explanation, difficulty)
+        INSERT INTO questions (id, topic_id, text, options, correct_index, explanation, difficulty)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
-        assessmentId,
+        assessment.topic_id,
         spec.text,
         JSON.stringify(spec.options),
         spec.correctIndex,
