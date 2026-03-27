@@ -53,7 +53,7 @@ export function ProfilePage() {
     let cancelled = false;
 
     Promise.all([
-      apiClient.get<{ child: ChildProfile }>(`/children/${userId}`),
+      apiClient.get<{ child: ChildProfile }>('/children/me'),
       childApi.getStats(userId),
     ]).then(([profileData, statsData]) => {
       if (cancelled) return;
@@ -150,7 +150,7 @@ export function ProfilePage() {
         <div className="grid grid-cols-2 gap-3 w-full">
           {[
             { label: 'Missions', value: stats.totalMissions, icon: '🎯' },
-            { label: 'Avg Score', value: `${Math.round(stats.avgScore * 10)}%`, icon: '📊' },
+            { label: 'Avg Score', value: `${Math.round(stats.avgScore)}%`, icon: '📊' },
             { label: 'Streak', value: `${stats.currentStreak} days`, icon: '🔥' },
             { label: 'Days Played', value: stats.daysPlayed, icon: '📅' },
           ].map(({ label, value, icon }) => (

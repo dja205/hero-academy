@@ -41,7 +41,7 @@ export function RegisterPage() {
         state: { message: 'Registration successful! Check your email to verify your account.' },
       });
     } catch (e: unknown) {
-      if (e instanceof ApiRequestError && e.code === 'EMAIL_EXISTS') {
+      if (e instanceof ApiRequestError && e.code === 'DUPLICATE_EMAIL') {
         setError('An account with this email already exists. Please log in instead.');
       } else if (e instanceof Error) {
         setError(e.message);

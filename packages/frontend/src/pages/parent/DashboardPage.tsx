@@ -21,6 +21,8 @@ interface ChildProfile {
 interface ParentProfile {
   plan?: string;
   subscriptionStatus?: string;
+  subscription_plan?: string;
+  subscription_status?: string;
 }
 
 const MAX_CHILDREN = 4;
@@ -56,10 +58,11 @@ export function DashboardPage() {
     loadChildren();
     // Load parent profile for subscription info
     apiClient
-      .get<ParentProfile>('/parent/profile')
-      .then((p) => {
-        if (p.plan) setPlan(p.plan);
-        else if (p.subscriptionStatus) setPlan(p.subscriptionStatus);
+      .get<{ parent: ParentProfile }>('/parent/profile')
+      .then((resp) => {
+        const p = resp.parent;
+        if (p?.subscription_plan) setPlan(p.subscription_plan);
+        else if (p?.subscription_status) setPlan(p.subscription_status);
       })
       .catch(() => {});
   }, [loadChildren]);

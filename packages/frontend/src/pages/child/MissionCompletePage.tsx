@@ -12,6 +12,7 @@ interface CompletionState {
   newRank: string;
   newAchievements: string[];
   assessmentId: string;
+  topicId?: string;
 }
 
 function getRankProgress(rank: string, totalXp: number) {
@@ -145,7 +146,7 @@ export function MissionCompletePage() {
         >
           <button
             type="button"
-            onClick={() => navigate(`/child/mission/${state.assessmentId}`, { replace: true })}
+            onClick={() => navigate(`/child/mission/${state.assessmentId}`, { replace: true, state: { topicId: state.topicId } })}
             className="btn-hero text-base min-h-[56px] w-full"
           >
             🔄 Train Again

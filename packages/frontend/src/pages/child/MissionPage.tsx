@@ -94,6 +94,7 @@ export function MissionPage() {
               newRank: result.newRank,
               newAchievements: result.newAchievements,
               assessmentId,
+              topicId,
             },
           });
         })
@@ -108,6 +109,7 @@ export function MissionPage() {
               newRank: 'Recruit',
               newAchievements: [],
               assessmentId,
+              topicId,
             },
           });
         });
