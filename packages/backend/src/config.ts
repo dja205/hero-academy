@@ -15,4 +15,7 @@ export const config = cleanEnv(process.env, {
   FRONTEND_URL: str({ default: 'http://localhost:5173' }),
   // ISS-055: 'auto' → true in production, false otherwise. Set 'true'/'false' to override.
   SECURE_COOKIES: str({ default: 'auto' }),
+  // DEBUG_UNLOCK_ALL: when 'true', bypasses all unlock/progression gates for local testing.
+  // Never enable in production — this flag unlocks all districts, boss battles, and content.
+  DEBUG_UNLOCK_ALL: str({ default: 'false' }),
 });

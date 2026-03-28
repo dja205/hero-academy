@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { config } from './config';
+import type { Request, Response, NextFunction } from 'express';
 import { applySecurityMiddleware } from './middleware/security';
 import { authRouter } from './routes/auth';
 import { adminRouter } from './routes/admin';
@@ -31,8 +32,16 @@ export function createApp(): express.Application {
   app.use(express.static(PUBLIC_DIR));
 
   app.get('/health', (_req, res) => {
-    res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString() } });
+    res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString(), debugMode: config.DEBUG_UNLOCK_ALL === 'true' } });
   });
+
+  // Inject debug mode header on every response so the frontend knows
+  if (config.DEBUG_UNLOCK_ALL === 'true') {
+    app.use((_req: Request, res: Response, next: NextFunction) => {
+      res.setHeader('X-Debug-Unlock-All', 'true');
+      next();
+    });
+  }
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/admin', adminRouter);

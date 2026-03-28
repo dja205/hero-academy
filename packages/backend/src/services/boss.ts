@@ -7,6 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db';
+import { config } from '../config';
 import {
   calculateXp,
   getRankForXp,
@@ -64,6 +65,9 @@ export function getBossForZone(subjectId: string) {
  * one completed attempt by this child (via any assessment in that topic).
  */
 export async function isBossUnlocked(childId: string, subjectId: string): Promise<boolean> {
+  // Debug mode: boss always unlocked
+  if (config.DEBUG_UNLOCK_ALL === 'true') return true;
+
   const db = getDb();
 
   // Count active topics in this subject

@@ -2,6 +2,7 @@ import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute as ChildProtectedRoute } from './components/child/ProtectedRoute';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
+import { DebugBanner } from './components/shared/DebugBanner';
 import { LoginPage as ChildLoginPage } from './pages/child/LoginPage';
 import { CityMapPage } from './pages/child/CityMapPage';
 import { DistrictPage } from './pages/child/DistrictPage';
@@ -113,6 +114,7 @@ function AuthBootstrap({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
+      <DebugBanner />
       <AuthBootstrap>
         <Routes>
       {/* Child Portal */}

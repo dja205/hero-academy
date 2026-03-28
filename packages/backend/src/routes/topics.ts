@@ -7,6 +7,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Role } from '@hero-academy/shared';
 import { verifyAccessToken } from '../services/auth';
 import { getDb } from '../db';
+import { config } from '../config';
 
 interface TopicRow {
   id: string;
@@ -94,6 +95,9 @@ function isTopicUnlocked(
   allTopics: TopicRow[],
   childId: string,
 ): boolean {
+  // Debug mode: all districts unlocked
+  if (config.DEBUG_UNLOCK_ALL === 'true') return true;
+
   const subjectTopics = allTopics
     .filter((t) => t.subject_id === topic.subject_id)
     .sort((a, b) => a.order - b.order);
