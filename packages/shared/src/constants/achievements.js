@@ -29,4 +29,16 @@ export const ACHIEVEMENTS = [
         description: 'Reach Sidekick rank',
         icon: '\u{1F31F}',
     },
+    {
+        type: 'boss_slayer',
+        name: 'Dragon Slayer',
+        description: 'Defeat your first boss',
+        icon: '\u{2694}\u{FE0F}',
+    },
+    {
+        type: 'zone_conquered_mathropolis',
+        name: 'Zone Conquered',
+        description: 'Conquer Mathropolis by defeating the Number Dragon',
+        icon: '\u{1F3C6}',
+    },
 ];

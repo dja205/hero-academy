@@ -7,6 +7,7 @@ import { CityMapPage } from './pages/child/CityMapPage';
 import { DistrictPage } from './pages/child/DistrictPage';
 import { MissionPage } from './pages/child/MissionPage';
 import { MissionCompletePage } from './pages/child/MissionCompletePage';
+import { BossBattlePage } from './pages/child/BossBattlePage';
 import { ProfilePage } from './pages/child/ProfilePage';
 import { RegisterPage as ParentRegisterPage } from './pages/parent/RegisterPage';
 import { LoginPage as ParentLoginPage } from './pages/parent/LoginPage';
@@ -120,6 +121,7 @@ export default function App() {
       <Route path="/child/district/:topicId" element={<ChildProtectedRoute><DistrictPage /></ChildProtectedRoute>} />
       <Route path="/child/mission/:assessmentId" element={<ChildProtectedRoute><MissionPage /></ChildProtectedRoute>} />
       <Route path="/child/mission/:assessmentId/complete" element={<ChildProtectedRoute><MissionCompletePage /></ChildProtectedRoute>} />
+      <Route path="/child/boss/:subjectId" element={<ChildProtectedRoute><BossBattlePage /></ChildProtectedRoute>} />
       <Route path="/child/profile" element={<ChildProtectedRoute><ProfilePage /></ChildProtectedRoute>} />
       <Route path="/child" element={<Navigate to="/child/login" replace />} />
 

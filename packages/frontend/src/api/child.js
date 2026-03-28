@@ -25,4 +25,14 @@ export const childApi = {
     getAttemptDetail(attemptId) {
         return apiClient.get(`/attempts/${encodeURIComponent(attemptId)}`);
     },
+    // Boss Battle API
+    getBossStatus(subjectId) {
+        return apiClient.get(`/boss/${encodeURIComponent(subjectId)}/status`);
+    },
+    getBossQuestions(subjectId) {
+        return apiClient.get(`/boss/${encodeURIComponent(subjectId)}/questions`);
+    },
+    submitBossAttempt(subjectId, data) {
+        return apiClient.post(`/boss/${encodeURIComponent(subjectId)}/attempt`, data);
+    },
 };

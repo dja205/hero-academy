@@ -85,7 +85,9 @@ afterAll(() => {
 beforeEach(() => {
   const db = getDb();
   db.exec('DELETE FROM child_achievements');
+  db.exec('DELETE FROM boss_attempts');
   db.exec('DELETE FROM attempts');
+  db.exec('DELETE FROM boss_battles');
   db.exec('DELETE FROM children');
   db.exec('DELETE FROM assessments');
   db.exec('DELETE FROM questions');

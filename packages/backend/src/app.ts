@@ -13,6 +13,7 @@ import { childrenRouter } from './routes/children';
 import { topicsRouter, zonesRouter } from './routes/topics';
 import { childHistoryRouter, attemptDetailRouter } from './routes/history';
 import { parentRouter } from './routes/parent';
+import { bossRouter } from './routes/boss';
 
 const PUBLIC_DIR = path.resolve(__dirname, '../public');
 
@@ -44,6 +45,7 @@ export function createApp(): express.Application {
   app.use('/api/v1/parent', parentRouter);
   app.use('/api/v1/topics', topicsRouter);
   app.use('/api/v1/zones', zonesRouter);
+  app.use('/api/v1/boss', bossRouter);
 
   // SPA fallback — send index.html for any non-API, non-asset route
   app.get('*', (_req, res) => {

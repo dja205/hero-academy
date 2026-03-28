@@ -3,12 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { childApi } from '../../api/child';
 
+interface BossStatus {
+  boss: { id: string; name: string; emoji: string; hp: number; description: string };
+  unlocked: boolean;
+  alreadyConquered: boolean;
+}
+
 interface TopicItem {
   id: string;
   name: string;
   districtName: string;
   colour: string;
   order: number;
+  subjectId: string;
   subjectName: string;
   zoneName: string;
   unlocked?: boolean;
@@ -28,6 +35,7 @@ export function CityMapPage() {
   const [topics, setTopics] = useState<TopicItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoomed, setZoomed] = useState<string | null>(null);
+  const [bossStatus, setBossStatus] = useState<BossStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +49,18 @@ export function CityMapPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Load boss status when Mathropolis is expanded
+  useEffect(() => {
+    if (zoomed !== 'Mathropolis') { setBossStatus(null); return; }
+    const mathTopic = topics.find((t) => t.zoneName === 'Mathropolis');
+    if (!mathTopic || !mathTopic.subjectId) return;
+    let cancelled = false;
+    childApi.getBossStatus(mathTopic.subjectId)
+      .then((data) => { if (!cancelled) setBossStatus(data); })
+      .catch(() => { /* boss not available yet */ });
+    return () => { cancelled = true; };
+  }, [zoomed, topics]);
 
   const mathDistricts = topics.filter((t) => t.zoneName === 'Mathropolis');
   const otherZones = ['Wordsworth', 'Logica', 'Sciencia'];
@@ -169,6 +189,56 @@ export function CityMapPage() {
                     );
                   })}
               </div>
+
+              {/* Boss Battle card — ISS-BB-007 */}
+              {bossStatus && (
+                <motion.button
+                  type="button"
+                  disabled={!bossStatus.unlocked || bossStatus.alreadyConquered}
+                  onClick={() => {
+                    const sid = mathDistricts[0]?.subjectId;
+                    if (sid && bossStatus.unlocked && !bossStatus.alreadyConquered) {
+                      navigate(`/child/boss/${sid}`);
+                    }
+                  }}
+                  className={`w-full card-hero text-left flex items-center gap-4 transition-all
+                    ${bossStatus.alreadyConquered
+                      ? 'border-amber-600/30 opacity-70'
+                      : bossStatus.unlocked
+                        ? 'border-amber-500/50 hover:border-amber-400 animate-glow-pulse'
+                        : 'opacity-40 cursor-not-allowed'
+                    }`}
+                  initial={prefersReduced ? {} : { x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  whileTap={bossStatus.unlocked && !bossStatus.alreadyConquered ? { scale: 0.97 } : {}}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                    style={{ backgroundColor: '#f59e0b22' }}
+                  >
+                    {bossStatus.alreadyConquered ? '✅' : bossStatus.unlocked ? bossStatus.boss.emoji : '🔒'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-hero-amber truncate">
+                      {bossStatus.alreadyConquered
+                        ? `✅ CONQUERED — ${bossStatus.boss.name}`
+                        : bossStatus.unlocked
+                          ? `⚔️ BOSS BATTLE — ${bossStatus.boss.name}`
+                          : '🔒 COMPLETE ALL DISTRICTS'
+                      }
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {bossStatus.alreadyConquered
+                        ? 'Zone conquered! You defeated the dragon.'
+                        : bossStatus.unlocked
+                          ? 'Defeat the boss to conquer the zone!'
+                          : 'Complete all district missions to unlock'
+                      }
+                    </p>
+                  </div>
+                </motion.button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

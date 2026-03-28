@@ -18,9 +18,22 @@ const MIGRATIONS_DIR = path.join(__dirname, '../db/migrations');
  * Tracks applied migrations in _migrations table to avoid re-running ALTERs.
  */
 export function applyMigrations(): void {
-  // Close any existing DB to ensure a fresh in-memory instance
+  // Close any existing DB to ensure a fresh instance
   closeDb();
   const db = getDb();
+
+  // Drop all existing tables for a truly fresh schema (path.resolve(':memory:')
+  // creates a real file that persists between test suites).
+  db.pragma('foreign_keys = OFF');
+  const tables = (
+    db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      .all() as { name: string }[]
+  ).map((t) => t.name);
+  for (const t of tables) {
+    db.exec(`DROP TABLE IF EXISTS "${t}"`);
+  }
+  db.pragma('foreign_keys = ON');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -36,12 +49,9 @@ export function applyMigrations(): void {
 
   for (const file of files) {
     const id = file.replace('.sql', '');
-    const already = db.prepare('SELECT id FROM _migrations WHERE id = ?').get(id);
-    if (already) continue;
-
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8');
     db.exec(sql);
-    db.prepare('INSERT INTO _migrations (id) VALUES (?)').run(id);
+    db.prepare('INSERT OR IGNORE INTO _migrations (id) VALUES (?)').run(id);
   }
 }
 

@@ -76,6 +76,59 @@ interface AttemptDetail extends AttemptListItem {
   answers: number[];
 }
 
+interface BossStatusResponse {
+  boss: {
+    id: string;
+    name: string;
+    emoji: string;
+    hp: number;
+    description: string;
+    questionCount: number;
+  };
+  unlocked: boolean;
+  lastAttempt: { outcome: string; completedAt: string } | null;
+  alreadyConquered: boolean;
+}
+
+interface BossQuestion {
+  id: string;
+  text: string;
+  options: string[];
+  difficulty: string;
+  correct_index: number;
+}
+
+interface BossQuestionsResponse {
+  attemptToken: string;
+  bossId: string;
+  questions: BossQuestion[];
+}
+
+interface BossAttemptSubmission {
+  attemptToken: string;
+  bossId: string;
+  answers: number[];
+  outcome: string;
+  livesRemaining: number;
+  bossHpFinal: number;
+  durationSeconds: number;
+}
+
+interface BossAttemptResult {
+  outcome: string;
+  score: number;
+  maxScore: number;
+  bossHpFinal: number;
+  livesRemaining: number;
+  xpEarned: number;
+  newTotalXp: number;
+  currentRank: string;
+  newRank: string | null;
+  currentStreak: number;
+  bestStreak: number;
+  newAchievements: string[];
+}
+
 export const childApi = {
   getTopics(): Promise<{ topics: TopicItem[] }> {
     return apiClient.get('/topics');
@@ -109,5 +162,18 @@ export const childApi = {
 
   getAttemptDetail(attemptId: string): Promise<{ attempt: AttemptDetail }> {
     return apiClient.get(`/attempts/${encodeURIComponent(attemptId)}`);
+  },
+
+  // Boss Battle API
+  getBossStatus(subjectId: string): Promise<BossStatusResponse> {
+    return apiClient.get(`/boss/${encodeURIComponent(subjectId)}/status`);
+  },
+
+  getBossQuestions(subjectId: string): Promise<BossQuestionsResponse> {
+    return apiClient.get(`/boss/${encodeURIComponent(subjectId)}/questions`);
+  },
+
+  submitBossAttempt(subjectId: string, data: BossAttemptSubmission): Promise<BossAttemptResult> {
+    return apiClient.post(`/boss/${encodeURIComponent(subjectId)}/attempt`, data);
   },
 };
