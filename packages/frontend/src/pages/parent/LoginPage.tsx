@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { apiClient, ApiRequestError } from '../../api/client';
@@ -25,6 +25,13 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
+
+  useEffect(() => {
+    fetch('/health').then(r => {
+      if (r.headers.get('x-debug-unlock-all') === 'true') setDebugMode(true);
+    }).catch(() => {});
+  }, []);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,6 +120,20 @@ export function LoginPage() {
               Create one
             </Link>
           </p>
+
+          {debugMode && (
+            <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-xs text-yellow-800">
+              <div className="font-bold mb-1">🐛 Debug Mode — Test Credentials</div>
+              <button
+                type="button"
+                className="underline hover:text-yellow-900"
+                onClick={() => { setEmail('test@test.com'); setPassword('password'); }}
+              >
+                Parent: test@test.com / password
+              </button>
+              <div className="mt-1 text-yellow-700">Then child PIN: <strong>1111</strong></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
