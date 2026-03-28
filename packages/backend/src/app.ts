@@ -28,20 +28,18 @@ export function createApp(): express.Application {
   app.use(express.json());
   app.use(cookieParser());
 
-  // Serve compiled frontend static assets
-  app.use(express.static(PUBLIC_DIR));
-
-  app.get('/health', (_req, res) => {
-    res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString(), debugMode: config.DEBUG_UNLOCK_ALL === 'true' } });
-  });
-
-  // Inject debug mode header on every response so the frontend knows
+  // Inject debug mode header on every response so the frontend knows (must be before routes)
   if (config.DEBUG_UNLOCK_ALL === 'true') {
     app.use((_req: Request, res: Response, next: NextFunction) => {
       res.setHeader('X-Debug-Unlock-All', 'true');
       next();
     });
   }
+
+  // API routes must come BEFORE static/SPA fallback
+  app.get('/health', (_req, res) => {
+    res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString(), debugMode: config.DEBUG_UNLOCK_ALL === 'true' } });
+  });
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/admin', adminRouter);
@@ -56,7 +54,8 @@ export function createApp(): express.Application {
   app.use('/api/v1/zones', zonesRouter);
   app.use('/api/v1/boss', bossRouter);
 
-  // SPA fallback — send index.html for any non-API, non-asset route
+  // Static assets and SPA fallback — must come AFTER all API routes
+  app.use(express.static(PUBLIC_DIR));
   app.get('*', (_req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
