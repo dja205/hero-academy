@@ -61,18 +61,22 @@ export function MissionPage() {
     const handleAnswer = useCallback((optionIndex) => {
         if (showFeedback || !question)
             return;
+        // Allow changing selection until Next is clicked — only update selectedOption
         setSelectedOption(optionIndex);
-        setShowFeedback(true);
-        setAnswers((prev) => [...prev, optionIndex]);
-        // Show "Next" button after brief delay
-        setTimeout(() => setShowNext(true), 500);
+        setShowNext(true);
     }, [showFeedback, question]);
     const handleNext = useCallback(() => {
+        // Lock in the selected answer and show feedback before advancing
+        if (selectedOption === null)
+            return;
+        const lockedAnswers = [...answers, selectedOption];
+        setAnswers(lockedAnswers);
+        setShowFeedback(true);
         const nextQ = currentQ + 1;
         if (nextQ >= totalQuestions) {
             // Submit attempt with idempotency key
             const durationSeconds = Math.round((Date.now() - startTime) / 1000);
-            const finalAnswers = [...answers];
+            const finalAnswers = lockedAnswers;
             const attemptId = generateUUID();
             childApi
                 .submitAttempt({
@@ -113,11 +117,14 @@ export function MissionPage() {
             });
             return;
         }
-        setCurrentQ(nextQ);
-        setSelectedOption(null);
-        setShowFeedback(false);
-        setShowNext(false);
-    }, [currentQ, totalQuestions, answers, assessment, assessmentId, navigate, startTime]);
+        // Brief delay so user sees feedback before next question
+        setTimeout(() => {
+            setCurrentQ(nextQ);
+            setSelectedOption(null);
+            setShowFeedback(false);
+            setShowNext(false);
+        }, 600);
+    }, [currentQ, totalQuestions, answers, selectedOption, assessment, assessmentId, navigate, startTime]);
     if (loading) {
         return (_jsx("div", { className: "min-h-screen flex items-center justify-center", children: _jsx(motion.div, { animate: { rotate: 360 }, transition: { duration: 1, repeat: Infinity, ease: 'linear' }, className: "w-12 h-12 border-4 border-hero-amber border-t-transparent rounded-full" }) }));
     }
