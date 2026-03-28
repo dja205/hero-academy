@@ -26,6 +26,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [lockedOut, setLockedOut] = useState(false);
+  const [pinResetKey, setPinResetKey] = useState(0);
 
   // If already logged in as child, redirect to map
   useEffect(() => {
@@ -72,6 +73,7 @@ export function LoginPage() {
       } catch {
         const next = attempts + 1;
         setAttempts(next);
+        setPinResetKey((k) => k + 1); // force PinPad to remount and clear entered digits
         if (next >= MAX_ATTEMPTS) {
           setLockedOut(true);
           setError('Too many tries! Ask your parent for help.');
@@ -128,6 +130,7 @@ export function LoginPage() {
           <div className="w-full">
             <p className="text-center text-slate-300 mb-4 text-base font-bold">Enter your PIN</p>
             <PinPad
+              key={pinResetKey}
               onSubmit={handlePinSubmit}
               error={error}
               disabled={lockedOut}

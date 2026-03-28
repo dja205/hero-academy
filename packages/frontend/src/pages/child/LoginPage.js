@@ -17,6 +17,7 @@ export function LoginPage() {
     const [error, setError] = useState(null);
     const [attempts, setAttempts] = useState(0);
     const [lockedOut, setLockedOut] = useState(false);
+    const [pinResetKey, setPinResetKey] = useState(0);
     // If already logged in as child, redirect to map
     useEffect(() => {
         if (token && role === 'child') {
@@ -58,6 +59,7 @@ export function LoginPage() {
         catch {
             const next = attempts + 1;
             setAttempts(next);
+            setPinResetKey((k) => k + 1); // force PinPad to remount and clear entered digits
             if (next >= MAX_ATTEMPTS) {
                 setLockedOut(true);
                 setError('Too many tries! Ask your parent for help.');
@@ -75,5 +77,5 @@ export function LoginPage() {
                         setError(null);
                         setAttempts(0);
                         setLockedOut(false);
-                    } }), children.length > 0 && (_jsxs("div", { className: "w-full", children: [_jsx("p", { className: "text-center text-slate-300 mb-4 text-base font-bold", children: "Enter your PIN" }), _jsx(PinPad, { onSubmit: handlePinSubmit, error: error, disabled: lockedOut })] })), _jsx("button", { type: "button", onClick: () => navigate('/parent'), className: "text-slate-500 hover:text-slate-300 text-sm transition-colors", children: "\u2190 Back to Parent Portal" })] }) }));
+                    } }), children.length > 0 && (_jsxs("div", { className: "w-full", children: [_jsx("p", { className: "text-center text-slate-300 mb-4 text-base font-bold", children: "Enter your PIN" }), _jsx(PinPad, { onSubmit: handlePinSubmit, error: error, disabled: lockedOut }, pinResetKey)] })), _jsx("button", { type: "button", onClick: () => navigate('/parent'), className: "text-slate-500 hover:text-slate-300 text-sm transition-colors", children: "\u2190 Back to Parent Portal" })] }) }));
 }
